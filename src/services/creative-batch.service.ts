@@ -9,6 +9,7 @@ export const creativeBatchService = {
   },
 
   async generate(body: {
+    product_id?: string;
     product_name: string;
     product_description: string;
     brand_palette?: string;

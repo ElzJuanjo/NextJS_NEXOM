@@ -10,11 +10,10 @@ export const creativeKeys = {
   batchPresets: ["creative-batches", "presets"] as const,
 };
 
-export function useCreatives(productId: string) {
+export function useCreatives(productId?: string) {
   return useQuery({
-    queryKey: creativeKeys.list(productId),
+    queryKey: ["creatives", productId ?? "all"],
     queryFn: () => creativeService.list(productId),
-    enabled: !!productId,
   });
 }
 
@@ -30,12 +29,12 @@ export function useCreateCreative() {
   });
 }
 
-export function useDeleteCreative(productId: string) {
+export function useDeleteCreative() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => creativeService.remove(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: creativeKeys.list(productId) });
+      qc.invalidateQueries({ queryKey: ["creatives"] });
       toast.success("Creativo eliminado");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -54,6 +53,26 @@ export function useGenerateBatch() {
   return useMutation({
     mutationFn: creativeBatchService.generate,
     onSuccess: () => toast.success("Batch de creativos generado"),
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUnassignedCreatives() {
+  return useQuery({
+    queryKey: ["creatives", "unassigned"],
+    queryFn: () => creativeService.listUnassigned(),
+  });
+}
+
+export function useAssignProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ creativeId, product_id }: { creativeId: string; product_id: string | null }) =>
+      creativeService.assignProduct(creativeId, product_id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creatives"] });
+      toast.success("Producto actualizado");
+    },
     onError: (err: Error) => toast.error(err.message),
   });
 }

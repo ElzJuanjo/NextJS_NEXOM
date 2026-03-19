@@ -216,18 +216,16 @@ export interface FlowTemplateInfo {
 
 export interface CreativeResponse {
   id: string;
-  product_id: string;
+  organization_id: string;
+  product_id: string | null;
   agent_type: string;
-  platform: string | null;
-  format: string | null;
-  style: string | null;
   status: string;
   file_url: string | null;
-  thumbnail_url: string | null;
   file_size_bytes: number | null;
-  width_px: number | null;
-  height_px: number | null;
-  duration_sec: number | null;
+  style: string | null;
+  format: string | null;
+  platform: string | null;
+  angle: string | null;
   generation_prompt: string | null;
   generation_params: Record<string, unknown> | null;
   created_at: string;

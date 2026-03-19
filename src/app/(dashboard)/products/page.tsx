@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Plus, Edit3, Trash2, DollarSign, ImageOff } from "lucide-react";
+import { Package, Plus, Edit3, Trash2, DollarSign, ImageOff, Check, ImageIcon } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
 import { Modal } from "@/components/ui/Modal";
@@ -11,6 +11,77 @@ import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } fro
 import { useBrands } from "@/hooks/use-brands";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { ProductResponse } from "@/types";
+import { useCreatives } from "@/hooks/use-creatives";
+
+function CreativePickerField({
+  productId,
+  currentUrl,
+  onSelect,
+}: {
+  productId: string;
+  currentUrl: string;
+  onSelect: (url: string) => void;
+}) {
+  const { data: creatives, isLoading } = useCreatives(productId);
+  const [expanded, setExpanded] = useState(false);
+
+  const withImages = creatives?.filter((c) => c.file_url) ?? [];
+
+  if (isLoading) return null;
+  if (!withImages.length) return null;
+
+  return (
+    <div className="col-span-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="text-xs text-primary hover:underline font-medium flex items-center gap-1"
+      >
+        <ImageIcon className="w-3 h-3" />
+        {expanded ? "Ocultar creativos" : `Elegir de creativos (${withImages.length})`}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 grid grid-cols-4 gap-2 max-h-48 overflow-y-auto scrollbar-thin p-1">
+          {withImages.map((c) => {
+            const isSelected = currentUrl === c.file_url;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => onSelect(c.file_url!)}
+                className={cn(
+                  "relative aspect-square rounded-lg overflow-hidden border-2 transition-all hover:opacity-90",
+                  isSelected
+                    ? "border-primary ring-1 ring-primary"
+                    : "border-border hover:border-muted-foreground"
+                )}
+              >
+                <img
+                  src={c.file_url!}
+                  alt={c.style ?? "Creative"}
+                  className="w-full h-full object-cover"
+                />
+                {isSelected && (
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-3.5 h-3.5 text-primary-foreground" />
+                    </div>
+                  </div>
+                )}
+                {c.style && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5">
+                    <span className="text-[10px] text-white capitalize">{c.style}</span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProductsPage() {
   const { data: products, isLoading } = useProducts();
@@ -146,8 +217,11 @@ export default function ProductsPage() {
             <div className="col-span-2">
               <label className="text-sm font-medium text-foreground block mb-1.5">URL de imagen</label>
               <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                placeholder="https://..."
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
             </div>
+
+            {editing && <CreativePickerField productId={editing.id} currentUrl={form.image_url} onSelect={(url) => setForm({ ...form, image_url: url })} />}
           </div>
           <button type="submit" disabled={createProduct.isPending || updateProduct.isPending}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
