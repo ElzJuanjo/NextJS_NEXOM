@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api-client";
+import type { CreativeBatchResponse } from "@/types";
 
 const BASE = "/api/v1/creative-batches";
 
@@ -14,11 +15,17 @@ export const creativeBatchService = {
     product_description: string;
     brand_palette?: string;
     preset_id?: string;
-    custom_angles?: string[];
-    custom_formats?: string[];
-    custom_styles?: string[];
-  }) {
-    const { data } = await apiClient.post(BASE, body);
+  }): Promise<CreativeBatchResponse> {
+    const { data } = await apiClient.post<CreativeBatchResponse>(BASE, body);
     return data;
+  },
+
+  async list(): Promise<CreativeBatchResponse[]> {
+    const { data } = await apiClient.get<{ batches: CreativeBatchResponse[] }>(BASE);
+    return data.batches;
+  },
+
+  async remove(batchId: string) {
+    await apiClient.delete(`${BASE}/${batchId}`);
   },
 };

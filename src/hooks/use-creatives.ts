@@ -41,22 +41,6 @@ export function useDeleteCreative() {
   });
 }
 
-export function useBatchPresets() {
-  return useQuery({
-    queryKey: creativeKeys.batchPresets,
-    queryFn: () => creativeBatchService.getPresets(),
-    staleTime: 10 * 60 * 1000,
-  });
-}
-
-export function useGenerateBatch() {
-  return useMutation({
-    mutationFn: creativeBatchService.generate,
-    onSuccess: () => toast.success("Batch de creativos generado"),
-    onError: (err: Error) => toast.error(err.message),
-  });
-}
-
 export function useUnassignedCreatives() {
   return useQuery({
     queryKey: ["creatives", "unassigned"],
@@ -72,6 +56,47 @@ export function useAssignProduct() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["creatives"] });
       toast.success("Producto actualizado");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useBatchPresets() {
+  return useQuery({
+    queryKey: creativeKeys.batchPresets,
+    queryFn: () => creativeBatchService.getPresets(),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useBatches() {
+  return useQuery({
+    queryKey: ["creative-batches"],
+    queryFn: () => creativeBatchService.list(),
+  });
+}
+
+export function useGenerateBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: creativeBatchService.generate,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: ["creatives"] });
+      toast.success("Batch de creativos generado");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDeleteBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => creativeBatchService.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: ["creatives"] });
+      toast.success("Batch eliminado");
     },
     onError: (err: Error) => toast.error(err.message),
   });

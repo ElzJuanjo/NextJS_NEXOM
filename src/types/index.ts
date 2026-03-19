@@ -218,6 +218,7 @@ export interface CreativeResponse {
   id: string;
   organization_id: string;
   product_id: string | null;
+  batch_id: string | null;
   agent_type: string;
   status: string;
   file_url: string | null;
@@ -241,6 +242,22 @@ export interface CreativeBatchPreset {
   angles: string[];
   formats: string[];
   styles: string[];
+}
+
+export interface CreativeBatchResponse {
+  id: string;
+  organization_id: string;
+  product_id: string | null;
+  name: string;
+  preset_id: string | null;
+  status: string;
+  total_expected: number;
+  total_generated: number;
+  total_failed: number;
+  credits_consumed: number;
+  config: Record<string, unknown> | null;
+  creatives: CreativeResponse[];
+  created_at: string;
 }
 
 // ── Landing Pages ───────────────────────────────────────────────────────────
