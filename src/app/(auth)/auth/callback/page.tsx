@@ -1,0 +1,36 @@
+"use client";
+
+import { useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { setAccessToken } from "@/lib/api-client";
+import { storeAccessToken } from "@/lib/auth";
+import { Spinner } from "@/components/ui/Spinner";
+import { Zap } from "lucide-react";
+
+export default function AuthCallbackPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const accessToken = searchParams.get("access_token");
+    const isNewUser = searchParams.get("is_new_user") === "true";
+
+    if (accessToken) {
+      setAccessToken(accessToken);
+      storeAccessToken(accessToken);
+      router.replace("/dashboard");
+    } else {
+      router.replace("/login");
+    }
+  }, [searchParams, router]);
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 relative z-10">
+      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+        <Zap className="w-5 h-5 text-white" />
+      </div>
+      <Spinner className="w-6 h-6 text-violet-400" />
+      <p className="text-sm text-muted-foreground">Autenticando con Google...</p>
+    </div>
+  );
+}

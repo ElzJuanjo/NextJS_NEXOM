@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 224 14% 8%;
+    --foreground: 0 0% 95%;
+    --card: 224 14% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 224 14% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 263 70% 65%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 224 14% 14%;
+    --secondary-foreground: 0 0% 85%;
+    --muted: 224 14% 14%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 224 14% 16%;
+    --accent-foreground: 0 0% 90%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 224 14% 16%;
+    --input: 224 14% 16%;
+    --ring: 263 70% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400;
+  }
+
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-sm border border-border/50;
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 2px;
+  }
+
+  .skeleton {
+    @apply bg-muted animate-shimmer;
+    background-image: linear-gradient(90deg,
+        hsl(var(--muted)) 0%,
+        hsl(var(--accent)) 50%,
+        hsl(var(--muted)) 100%);
+    background-size: 200% 100%;
+  }
+}
