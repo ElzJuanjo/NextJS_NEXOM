@@ -35,6 +35,7 @@ export function useDeleteCreative() {
     mutationFn: (id: string) => creativeService.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["creatives"] });
+      qc.invalidateQueries({ queryKey: ["creative-batches"] });
       toast.success("Creativo eliminado");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -97,6 +98,46 @@ export function useDeleteBatch() {
       qc.invalidateQueries({ queryKey: ["creative-batches"] });
       qc.invalidateQueries({ queryKey: ["creatives"] });
       toast.success("Batch eliminado");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useCreateGallery() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, product_id }: { name: string; product_id?: string }) =>
+      creativeBatchService.createGallery(name, product_id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      toast.success("Galería creada");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useUpdateGallery() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; name?: string; product_id?: string | null }) =>
+      creativeBatchService.updateGallery(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      toast.success("Galería actualizada");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useMoveCreative() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ creativeId, batch_id }: { creativeId: string; batch_id: string | null }) =>
+      creativeBatchService.moveCreative(creativeId, batch_id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: ["creatives"] });
+      toast.success("Creativo movido");
     },
     onError: (err: Error) => toast.error(err.message),
   });

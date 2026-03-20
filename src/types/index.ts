@@ -249,7 +249,6 @@ export interface CreativeBatchResponse {
   organization_id: string;
   product_id: string | null;
   name: string;
-  preset_id: string | null;
   status: string;
   total_expected: number;
   total_generated: number;

@@ -4,10 +4,9 @@ export function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000, // 1 min
-        gcTime: 5 * 60 * 1000, // 5 min
+        staleTime: 60 * 1000,
+        gcTime: 5 * 60 * 1000,
         retry: (failureCount, error) => {
-          // Don't retry on 401, 403, 404
           if (error instanceof Error) {
             const msg = error.message.toLowerCase();
             if (
@@ -22,9 +21,11 @@ export function makeQueryClient() {
           return failureCount < 2;
         },
         refetchOnWindowFocus: false,
+        throwOnError: false,
       },
       mutations: {
         retry: false,
+        throwOnError: false,
       },
     },
   });

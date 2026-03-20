@@ -1,21 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { ImageIcon, Sparkles, Link2, Trash2, Check, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  ImageIcon, Sparkles, Link2, Trash2, FolderOpen, ChevronDown,
+  ChevronRight, Edit3, FolderPlus, ArrowRightLeft,
+} from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { useProducts } from "@/hooks/use-products";
 import {
   useCreatives, useUnassignedCreatives, useDeleteCreative,
   useBatches, useGenerateBatch, useDeleteBatch,
-  useAssignProduct,
+  useAssignProduct, useCreateGallery, useUpdateGallery, useMoveCreative,
 } from "@/hooks/use-creatives";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import type { CreativeResponse } from "@/types";
+import type { CreativeResponse, CreativeBatchResponse } from "@/types";
 
 type ViewMode = "batches" | "product" | "unassigned";
 
@@ -34,11 +36,20 @@ export default function CreativePage() {
   const deleteBatch = useDeleteBatch();
   const deleteCreative = useDeleteCreative();
   const assignProduct = useAssignProduct();
+  const createGallery = useCreateGallery();
+  const updateGallery = useUpdateGallery();
+  const moveCreative = useMoveCreative();
 
+  // UI state
   const [showBatch, setShowBatch] = useState(false);
   const [showAssign, setShowAssign] = useState<CreativeResponse | null>(null);
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
-  const [batchForm, setBatchForm] = useState({ product_name: "", product_description: "", preset_id: "starter", product_id: "" });
+  const [batchForm, setBatchForm] = useState({ gallery_name: "", product_description: "", preset_id: "starter", product_id: "" });
+  const [showNewGallery, setShowNewGallery] = useState(false);
+  const [newGalleryName, setNewGalleryName] = useState("");
+  const [editingBatch, setEditingBatch] = useState<CreativeBatchResponse | null>(null);
+  const [editBatchName, setEditBatchName] = useState("");
+  const [movingCreative, setMovingCreative] = useState<CreativeResponse | null>(null);
 
   const toggleBatch = (id: string) => {
     setExpandedBatches((prev) => {
@@ -50,26 +61,37 @@ export default function CreativePage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="Creativos" subtitle="Generación de imágenes y assets visuales con IA"
-        action={{ label: "Nuevo batch", onClick: () => setShowBatch(true) }} />
+      <Header title="Creativos" subtitle="Generación de imágenes y assets visuales con IA" />
 
       <div className="flex-1 p-6 space-y-4">
-        {/* View mode tabs */}
-        <div className="flex items-center gap-2">
-          {([
-            { mode: "batches" as ViewMode, label: "Galerías", count: batches?.length },
-            { mode: "product" as ViewMode, label: "Por producto", count: undefined },
-            { mode: "unassigned" as ViewMode, label: "Sin asignar", count: unassigned?.length },
-          ]).map((tab) => (
-            <button key={tab.mode} onClick={() => setViewMode(tab.mode)}
-              className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-all",
-                viewMode === tab.mode
-                  ? "text-cyan-400 bg-cyan-400/10 border-cyan-400/20"
-                  : "border-border text-muted-foreground hover:bg-accent"
-              )}>
-              {tab.label} {tab.count !== undefined && tab.count > 0 ? `(${tab.count})` : ""}
+        {/* View mode tabs + actions */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            {([
+              { mode: "batches" as ViewMode, label: "Galerías", count: batches?.length },
+              { mode: "product" as ViewMode, label: "Por producto", count: undefined },
+              { mode: "unassigned" as ViewMode, label: "Sin asignar", count: unassigned?.length },
+            ]).map((tab) => (
+              <button key={tab.mode} onClick={() => setViewMode(tab.mode)}
+                className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-all",
+                  viewMode === tab.mode
+                    ? "text-cyan-400 bg-cyan-400/10 border-cyan-400/20"
+                    : "border-border text-muted-foreground hover:bg-accent"
+                )}>
+                {tab.label} {tab.count !== undefined && tab.count > 0 ? `(${tab.count})` : ""}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowBatch(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all">
+              <Sparkles className="w-3.5 h-3.5" /> Generar batch
             </button>
-          ))}
+            <button onClick={() => setShowNewGallery(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-all">
+              <FolderPlus className="w-3.5 h-3.5" /> Nueva galería
+            </button>
+          </div>
         </div>
 
         {/* Product selector for product view */}
@@ -93,7 +115,7 @@ export default function CreativePage() {
             <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
           ) : !batches?.length ? (
             <EmptyState icon={FolderOpen} title="Sin galerías aún"
-              description="Genera tu primer batch de creativos para crear una galería de imágenes."
+              description="Genera tu primer batch de creativos o crea una galería vacía."
               action={{ label: "Generar batch", onClick: () => setShowBatch(true) }} />
           ) : (
             <div className="space-y-3">
@@ -103,34 +125,40 @@ export default function CreativePage() {
                 return (
                   <div key={batch.id} className="bg-card border border-border rounded-xl overflow-hidden animate-fade-in">
                     {/* Batch header */}
-                    <button onClick={() => toggleBatch(batch.id)}
-                      className="w-full flex items-center gap-3 px-5 py-4 hover:bg-accent/30 transition-colors text-left">
+                    <div onClick={() => toggleBatch(batch.id)}
+                      className="w-full flex items-center gap-3 px-5 py-4 hover:bg-accent/30 transition-colors text-left cursor-pointer">
                       {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
                       <FolderOpen className="w-4 h-4 text-cyan-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">{batch.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {batch.total_generated} imágenes · {formatRelativeTime(batch.created_at)}
+                          {batch.creatives?.length ?? 0} imágenes · {formatRelativeTime(batch.created_at)}
                           {productName && <> · <span className="text-pink-400">{productName}</span></>}
                         </p>
                       </div>
-                      <StatusBadge status={batch.status} />
-                      <span className="text-xs text-muted-foreground">{batch.credits_consumed} créditos</span>
+                      <button onClick={(e) => { e.stopPropagation(); setEditingBatch(batch); setEditBatchName(batch.name); }}
+                        className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
                       <button onClick={(e) => { e.stopPropagation(); if (confirm(`¿Eliminar "${batch.name}" y todas sus imágenes?`)) deleteBatch.mutate(batch.id); }}
                         className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </button>
+                    </div>
 
                     {/* Batch creatives grid */}
                     {isExpanded && (
                       <div className="px-5 pb-4 pt-1 border-t border-border">
                         {!batch.creatives?.length ? (
-                          <p className="text-xs text-muted-foreground py-4 text-center">Sin imágenes en este batch</p>
+                          <p className="text-xs text-muted-foreground py-4 text-center">Galería vacía — genera un batch o mueve creativos aquí</p>
                         ) : (
                           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 mt-2">
                             {batch.creatives.map((c) => (
-                              <CreativeCard key={c.id} creative={c} onDelete={() => deleteCreative.mutate(c.id)} onAssign={() => setShowAssign(c)} />
+                              <CreativeCard key={c.id} creative={c}
+                                onDelete={() => deleteCreative.mutate(c.id)}
+                                onAssign={() => setShowAssign(c)}
+                                onMove={() => setMovingCreative(c)}
+                              />
                             ))}
                           </div>
                         )}
@@ -156,7 +184,11 @@ export default function CreativePage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {productCreatives.map((c) => (
-                <CreativeCard key={c.id} creative={c} onDelete={() => deleteCreative.mutate(c.id)} onAssign={() => setShowAssign(c)} />
+                <CreativeCard key={c.id} creative={c}
+                  onDelete={() => deleteCreative.mutate(c.id)}
+                  onAssign={() => setShowAssign(c)}
+                  onMove={() => setMovingCreative(c)}
+                />
               ))}
             </div>
           )
@@ -169,52 +201,69 @@ export default function CreativePage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {unassigned.map((c) => (
-                <CreativeCard key={c.id} creative={c} onDelete={() => deleteCreative.mutate(c.id)} onAssign={() => setShowAssign(c)} />
+                <CreativeCard key={c.id} creative={c}
+                  onDelete={() => deleteCreative.mutate(c.id)}
+                  onAssign={() => setShowAssign(c)}
+                  onMove={() => setMovingCreative(c)}
+                />
               ))}
             </div>
           )
         )}
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* MODALS                                                             */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+
       {/* ── Generate Batch Modal ── */}
       <Modal open={showBatch} onClose={() => setShowBatch(false)} title="Nuevo batch de creativos" className="max-w-lg">
         <form onSubmit={(e) => {
           e.preventDefault();
           generateBatch.mutate(
-            { ...batchForm, product_id: batchForm.product_id || undefined },
-            { onSuccess: () => { setShowBatch(false); setBatchForm({ product_name: "", product_description: "", preset_id: "starter", product_id: "" }); } }
+            {
+              product_name: batchForm.product_description, // el prompt usa la descripción como input principal
+              product_description: batchForm.product_description,
+              product_id: batchForm.product_id || undefined,
+              gallery_name: batchForm.gallery_name || undefined,
+              preset_id: batchForm.preset_id,
+            },
+            { onSuccess: () => { setShowBatch(false); setBatchForm({ gallery_name: "", product_description: "", preset_id: "starter", product_id: "" }); } }
           );
         }} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Producto (opcional)</label>
+            <label className="text-sm font-medium text-foreground block mb-1.5">Nombre de galería</label>
+            <input value={batchForm.gallery_name} onChange={(e) => setBatchForm({ ...batchForm, gallery_name: e.target.value })}
+              placeholder="Ej: Zapatos deportivos, iPhone Pro, etc."
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
+            <p className="text-xs text-muted-foreground mt-1">Si ya existe una galería con este nombre, las imágenes se acumulan ahí.</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1.5">¿Qué quieres generar?</label>
+            <textarea value={batchForm.product_description} onChange={(e) => setBatchForm({ ...batchForm, product_description: e.target.value })} required rows={3}
+              placeholder="Describe lo que quieres ver: ej. 'iPhone 15 Pro en diferentes estilos de fotografía profesional'"
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all resize-none" />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1.5">Vincular a producto (opcional)</label>
             <select value={batchForm.product_id} onChange={(e) => setBatchForm({ ...batchForm, product_id: e.target.value })}
               className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all">
-              <option value="">Sin vincular a producto</option>
+              <option value="">Sin vincular</option>
               {products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Nombre del producto</label>
-            <input value={batchForm.product_name} onChange={(e) => setBatchForm({ ...batchForm, product_name: e.target.value })} required
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Descripción</label>
-            <textarea value={batchForm.product_description} onChange={(e) => setBatchForm({ ...batchForm, product_description: e.target.value })} required rows={3}
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all resize-none" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground block mb-1.5">Cantidad</label>
             <select value={batchForm.preset_id} onChange={(e) => setBatchForm({ ...batchForm, preset_id: e.target.value })}
               className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all">
-              <option value="starter">Starter — 5 imágenes</option>
-              <option value="campaign">Campaña — 10 imágenes</option>
-              <option value="full">Full — 15 imágenes</option>
+              <option value="starter">3 imágenes</option>
+              <option value="campaign">5 imágenes</option>
+              <option value="full">10 imágenes</option>
             </select>
           </div>
           <button type="submit" disabled={generateBatch.isPending}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
-            {generateBatch.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : <><Sparkles className="w-4 h-4" /> Generar batch</>}
+            {generateBatch.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : <><Sparkles className="w-4 h-4" /> Generar</>}
           </button>
         </form>
       </Modal>
@@ -255,31 +304,139 @@ export default function CreativePage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Create Gallery Modal ── */}
+      <Modal open={showNewGallery} onClose={() => setShowNewGallery(false)} title="Nueva galería">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (!newGalleryName.trim()) return;
+          createGallery.mutate({ name: newGalleryName.trim() }, {
+            onSuccess: () => { setShowNewGallery(false); setNewGalleryName(""); }
+          });
+        }} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1.5">Nombre</label>
+            <input value={newGalleryName} onChange={(e) => setNewGalleryName(e.target.value)} required
+              placeholder="Ej: Zapatos deportivos"
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
+          </div>
+          <button type="submit" disabled={createGallery.isPending}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
+            {createGallery.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : <><FolderPlus className="w-4 h-4" /> Crear galería</>}
+          </button>
+        </form>
+      </Modal>
+
+      {/* ── Edit Gallery Modal ── */}
+      <Modal open={!!editingBatch} onClose={() => setEditingBatch(null)} title="Editar galería">
+        {editingBatch && (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            updateGallery.mutate({ id: editingBatch.id, name: editBatchName.trim() }, {
+              onSuccess: () => setEditingBatch(null)
+            });
+          }} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1.5">Nombre</label>
+              <input value={editBatchName} onChange={(e) => setEditBatchName(e.target.value)} required
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
+            </div>
+            <button type="submit" disabled={updateGallery.isPending}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
+              {updateGallery.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : "Guardar"}
+            </button>
+          </form>
+        )}
+      </Modal>
+
+      {/* ── Move Creative to Gallery Modal ── */}
+      <Modal open={!!movingCreative} onClose={() => setMovingCreative(null)} title="Mover a galería">
+        {movingCreative && (
+          <div className="space-y-4">
+            <div className="aspect-video bg-muted rounded-lg overflow-hidden max-h-32">
+              {movingCreative.file_url && <img src={movingCreative.file_url} alt="" className="w-full h-full object-contain" />}
+            </div>
+            {movingCreative.batch_id && (
+              <button onClick={() => moveCreative.mutate({ creativeId: movingCreative.id, batch_id: null }, { onSuccess: () => setMovingCreative(null) })}
+                className="w-full text-xs text-destructive hover:underline font-medium text-left px-3 py-2 bg-destructive/5 rounded-lg border border-destructive/20">
+                Quitar de galería actual
+              </button>
+            )}
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1.5">Selecciona galería destino</label>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-thin">
+                {batches?.map((b) => {
+                  const isCurrent = movingCreative.batch_id === b.id;
+                  return (
+                    <button key={b.id}
+                      onClick={() => { if (!isCurrent) moveCreative.mutate({ creativeId: movingCreative.id, batch_id: b.id }, { onSuccess: () => setMovingCreative(null) }); }}
+                      disabled={isCurrent || moveCreative.isPending}
+                      className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors",
+                        isCurrent ? "border-primary/50 bg-primary/5 opacity-60" : "border-border hover:bg-accent")}>
+                      <FolderOpen className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-foreground block truncate">{b.name}</span>
+                        <span className="text-xs text-muted-foreground">{b.creatives?.length ?? 0} imágenes</span>
+                      </div>
+                      {isCurrent && <span className="text-xs text-primary shrink-0">Actual</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
 
-/* ── Reusable Creative Card ── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Reusable Creative Card                                                     */
+/* ═══════════════════════════════════════════════════════════════════════════ */
 
-function CreativeCard({ creative: c, onDelete, onAssign }: { creative: CreativeResponse; onDelete: () => void; onAssign: () => void }) {
+function CreativeCard({
+  creative: c,
+  onDelete,
+  onAssign,
+  onMove,
+}: {
+  creative: CreativeResponse;
+  onDelete: () => void;
+  onAssign: () => void;
+  onMove: () => void;
+}) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden group">
       <div className="aspect-square bg-muted flex items-center justify-center relative">
-        {c.file_url ? <img src={c.file_url} alt="" className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-muted-foreground/30" />}
+        {c.file_url ? (
+          <img src={c.file_url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+        )}
         <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); onMove(); }}
+            className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Mover a galería">
+            <ArrowRightLeft className="w-3 h-3" />
+          </button>
           <button onClick={(e) => { e.stopPropagation(); onAssign(); }}
-            className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Asignar producto">
+            className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Asignar producto">
             <Link2 className="w-3 h-3" />
           </button>
           <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar?")) onDelete(); }}
-            className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Eliminar">
+            className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            title="Eliminar">
             <Trash2 className="w-3 h-3" />
           </button>
         </div>
       </div>
       <div className="p-2.5 space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium text-foreground capitalize truncate">{c.style ?? c.angle ?? "Creative"}</span>
+          <span className="text-[11px] font-medium text-foreground capitalize truncate">
+            {c.style ?? c.angle ?? "Creative"}
+          </span>
           {c.format && <span className="text-[10px] text-muted-foreground">{c.format}</span>}
         </div>
         {c.platform && <p className="text-[10px] text-muted-foreground truncate">{c.platform}</p>}
