@@ -380,33 +380,41 @@ export default function SettingsPage() {
                 <div className="bg-card border border-border rounded-xl p-6">
                   <h3 className="text-base font-semibold text-foreground mb-4">Planes disponibles</h3>
                   {plansLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {Array.from({ length: 3 }).map((_, i) => <div key={i} className="space-y-3"><Skeleton className="h-32 w-full" /></div>)}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {Array.from({ length: 4 }).map((_, i) => <div key={i} className="space-y-3"><Skeleton className="h-48 w-full" /></div>)}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       {plans?.map((plan) => {
                         const isCurrent = org?.plan?.plan_type === plan.plan_type;
                         return (
-                          <div key={plan.id} className={cn("border rounded-xl p-5 space-y-3 transition-all",
+                          <div key={plan.id} className={cn("border rounded-xl p-5 space-y-4 transition-all flex flex-col",
                             isCurrent ? "border-violet-500/50 bg-violet-500/5 glow-purple" : "border-border hover:border-border/80")}>
                             <div>
                               <h4 className="text-sm font-bold text-foreground capitalize">{plan.name}</h4>
-                              <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(plan.price_monthly_usd)}<span className="text-xs text-muted-foreground font-normal">/mes</span></p>
+                              <p className="text-2xl font-bold text-foreground mt-1">
+                                {formatCurrency(plan.price_monthly_usd)}
+                                <span className="text-xs text-muted-foreground font-normal">/mes</span>
+                              </p>
+                              {plan.price_yearly_usd > 0 && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {formatCurrency(plan.price_yearly_usd)}/año
+                                </p>
+                              )}
                             </div>
-                            <div className="space-y-1.5 text-xs text-muted-foreground">
+                            <div className="space-y-1.5 text-xs text-muted-foreground flex-1">
                               <p>{formatCredits(plan.max_credits_per_month)} créditos/mes</p>
-                              <p>{plan.max_agents} agentes máx.</p>
-                              {plan.has_api_access && <p className="text-emerald-400">Acceso API incluido</p>}
                             </div>
-                            {isCurrent ? (
-                              <div className="px-3 py-2 rounded-lg bg-violet-400/10 text-violet-400 text-xs font-medium text-center border border-violet-400/20">Plan actual</div>
-                            ) : (
-                              <button onClick={() => changePlan.mutate(plan.plan_type)} disabled={changePlan.isPending}
-                                className="w-full px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all disabled:opacity-60">
-                                {changePlan.isPending ? <Spinner className="w-3 h-3 text-primary-foreground mx-auto" /> : "Cambiar plan"}
-                              </button>
-                            )}
+                            <div className="mt-auto">
+                              {isCurrent ? (
+                                <div className="px-3 py-2 rounded-lg bg-violet-400/10 text-violet-400 text-xs font-medium text-center border border-violet-400/20">Plan actual</div>
+                              ) : (
+                                <button onClick={() => changePlan.mutate(plan.plan_type)} disabled={changePlan.isPending}
+                                  className="w-full px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all disabled:opacity-60">
+                                  {changePlan.isPending ? <Spinner className="w-3 h-3 text-primary-foreground mx-auto" /> : "Cambiar plan"}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         );
                       })}

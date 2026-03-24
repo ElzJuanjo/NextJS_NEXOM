@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   ImageIcon, Sparkles, Link2, Trash2, FolderOpen, ChevronDown,
-  ChevronRight, Edit3, FolderPlus, ArrowRightLeft,
+  ChevronRight, Edit3, FolderPlus, ArrowRightLeft, X,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
@@ -39,6 +39,8 @@ export default function CreativePage() {
   const createGallery = useCreateGallery();
   const updateGallery = useUpdateGallery();
   const moveCreative = useMoveCreative();
+
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // UI state
   const [showBatch, setShowBatch] = useState(false);
@@ -158,6 +160,7 @@ export default function CreativePage() {
                                 onDelete={() => deleteCreative.mutate(c.id)}
                                 onAssign={() => setShowAssign(c)}
                                 onMove={() => setMovingCreative(c)}
+                                onExpand={() => setLightboxSrc(c.file_url)}
                               />
                             ))}
                           </div>
@@ -188,6 +191,7 @@ export default function CreativePage() {
                   onDelete={() => deleteCreative.mutate(c.id)}
                   onAssign={() => setShowAssign(c)}
                   onMove={() => setMovingCreative(c)}
+                  onExpand={() => setLightboxSrc(c.file_url)}
                 />
               ))}
             </div>
@@ -205,6 +209,7 @@ export default function CreativePage() {
                   onDelete={() => deleteCreative.mutate(c.id)}
                   onAssign={() => setShowAssign(c)}
                   onMove={() => setMovingCreative(c)}
+                  onExpand={() => setLightboxSrc(c.file_url)}
                 />
               ))}
             </div>
@@ -387,6 +392,38 @@ export default function CreativePage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Lightbox ── */}
+      {lightboxSrc && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-8"
+          onClick={() => setLightboxSrc(null)}>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            <button onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                const res = await fetch(lightboxSrc);
+                const blob = await res.blob();
+                const ext = blob.type.includes("jpeg") ? "jpg" : blob.type.includes("webp") ? "webp" : "png";
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = `nexos_${new Date().toISOString().slice(0, 10)}.${ext}`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch { /* ignore */ }
+            }} className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors" title="Descargar">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            </button>
+            <button onClick={() => setLightboxSrc(null)}
+              className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors" title="Cerrar">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <img src={lightboxSrc} alt="Creative expandido"
+            className="max-w-full max-h-full object-contain rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -400,11 +437,13 @@ function CreativeCard({
   onDelete,
   onAssign,
   onMove,
+  onExpand,
 }: {
   creative: CreativeResponse;
   onDelete: () => void;
   onAssign: () => void;
   onMove: () => void;
+  onExpand: () => void;
 }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden group">
@@ -415,6 +454,11 @@ function CreativeCard({
           <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
         )}
         <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); onExpand(); }}
+            className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Expandir">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+          </button>
           <button onClick={(e) => { e.stopPropagation(); onMove(); }}
             className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Mover a galería">

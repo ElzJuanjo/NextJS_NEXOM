@@ -46,4 +46,12 @@ export const creativeService = {
     const { data } = await apiClient.patch<CreativeResponse>(`${BASE}/${creativeId}/assign`, { product_id });
     return data;
   },
+
+  async createFromUrl(file_url: string, generation_prompt?: string) {
+    const { data } = await apiClient.post<CreativeResponse>(`${BASE}/from-url`, {
+      file_url,
+      generation_prompt,
+    });
+    return data;
+  },
 };

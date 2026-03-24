@@ -70,6 +70,8 @@ export function useChangePlan() {
     onSuccess: (data) => {
       qc.setQueryData(orgKeys.myOrg, data);
       qc.invalidateQueries({ queryKey: orgKeys.usage });
+      qc.invalidateQueries({ queryKey: orgKeys.myOrg });
+      qc.invalidateQueries({ queryKey: ["plans"] });
       toast.success("Plan actualizado");
     },
     onError: (err: Error) => toast.error(err.message),

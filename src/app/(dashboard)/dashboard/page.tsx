@@ -34,14 +34,21 @@ export default function DashboardPage() {
   const completedTasks = tasks?.filter((t) => t.status === "completed").length ?? 0;
   const totalTasks = tasks?.length ?? 0;
   const runningFlows = flows?.filter((f) => f.status === "running").length ?? 0;
-  const successRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const partialTasks = tasks?.filter((t) => t.status === "partial") ?? [];
+  const partialValue = partialTasks.reduce((acc, t) => {
+    const pct = (t.output_payload as Record<string, unknown>)?.success_pct;
+    return acc + (typeof pct === "number" ? pct / 100 : 0.5);
+  }, 0);
+  const successRate = totalTasks > 0
+    ? Math.round(((completedTasks + partialValue) / totalTasks) * 100)
+    : 0;
 
   return (
     <div className="flex flex-col h-full">
       <Header
         title="Dashboard"
         subtitle="Vista general del sistema de agentes"
-        action={{ label: "Nuevo proceso", onClick: () => {} }}
+        action={{ label: "Nuevo proceso", onClick: () => { } }}
       />
 
       <div className="flex-1 p-6 space-y-6">
@@ -100,7 +107,7 @@ export default function DashboardPage() {
                 icon={Activity}
                 title="Sin actividad aún"
                 description="Ejecuta tu primer agente desde el Orquestador para ver la actividad aquí."
-                action={{ label: "Ir al Orquestador", onClick: () => {} }}
+                action={{ label: "Ir al Orquestador", onClick: () => { } }}
               />
             ) : (
               <div className="space-y-2">
@@ -117,17 +124,25 @@ export default function DashboardPage() {
                         <p className="text-sm font-medium text-foreground truncate">
                           {meta?.label ?? task.agent_type}
                         </p>
-                        <p className="text-xs text-muted-foreground">{formatRelativeTime(task.created_at)}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {task.input_payload && typeof (task.input_payload as Record<string, unknown>).user_input === "string"
+                            ? `${String((task.input_payload as Record<string, unknown>).user_input).slice(0, 60)}${String((task.input_payload as Record<string, unknown>).user_input).length > 60 ? "..." : ""}`
+                            : meta?.label ?? task.agent_type}
+                        </p>
                       </div>
-                      <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", getStatusBadge(task.status))}>
-                        {task.status}
-                      </span>
-                      {task.duration_ms && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {(task.duration_ms / 1000).toFixed(1)}s
+                      <div className="flex items-center gap-3 shrink-0">
+                        {task.credits_used != null && (
+                          <span className="text-xs text-muted-foreground">{task.credits_used} cr.</span>
+                        )}
+                        {task.finished_at && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatRelativeTime(task.finished_at)}
+                          </span>
+                        )}
+                        <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", getStatusBadge(task.status))}>
+                          {task.status}
                         </span>
-                      )}
+                      </div>
                     </div>
                   );
                 })}

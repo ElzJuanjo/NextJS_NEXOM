@@ -49,8 +49,6 @@ export interface PlanResponse {
   name: string;
   plan_type: string;
   max_credits_per_month: number;
-  max_agents: number;
-  has_api_access: boolean;
   price_monthly_usd: number;
   price_yearly_usd: number;
 }
@@ -129,11 +127,10 @@ export interface AgentTaskResponse {
   input_payload: Record<string, unknown> | null;
   output_payload: Record<string, unknown> | null;
   error_message: string | null;
-  tokens_used: number | null;
-  cost_usd: number | null;
+  credits_used: number | null;
+  duration_ms: number | null;
   started_at: string | null;
   finished_at: string | null;
-  duration_ms: number | null;
   created_at: string;
 }
 
@@ -323,6 +320,41 @@ export interface AgentMeta {
   label: string;
   color: string;
   activeBg: string;
+}
+
+// ── Conversations ───────────────────────────────────────────────────────────
+
+export interface ConversationMessageResponse {
+  id: string;
+  role: string;
+  content: string;
+  agent_type: string | null;
+  meta_data: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ConversationResponse {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  title: string | null;
+  agent_type: string | null;
+  is_archived: boolean;
+  message_count: number;
+  last_message_at: string | null;
+  created_at: string;
+}
+
+export interface ConversationDetailResponse extends ConversationResponse {
+  messages: ConversationMessageResponse[];
+}
+
+export interface SendMessageResponse {
+  conversation_id: string;
+  message: ConversationMessageResponse;
+  response: ConversationMessageResponse;
+  credits_consumed: number | null;
+  credits_remaining: number | null;
 }
 
 export const AGENT_META: AgentMeta[] = [
