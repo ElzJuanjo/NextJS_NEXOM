@@ -4,10 +4,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { creativeService } from "@/services/creative.service";
 import { creativeBatchService } from "@/services/creative-batch.service";
 import toast from "react-hot-toast";
+import { useState } from "react";
 
 export const creativeKeys = {
   list: (productId: string) => ["creatives", productId] as const,
+  unassigned: ["creatives", "unassigned"] as const,
   batchPresets: ["creative-batches", "presets"] as const,
+};
+
+export const batchKeys = {
+  list: ["creative-batches"] as const,
 };
 
 export function useCreatives(productId?: string) {
@@ -35,7 +41,7 @@ export function useDeleteCreative() {
     mutationFn: (id: string) => creativeService.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["creatives"] });
-      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: batchKeys.list });
       toast.success("Creativo eliminado");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -44,7 +50,7 @@ export function useDeleteCreative() {
 
 export function useUnassignedCreatives() {
   return useQuery({
-    queryKey: ["creatives", "unassigned"],
+    queryKey: creativeKeys.unassigned,
     queryFn: () => creativeService.listUnassigned(),
   });
 }
@@ -72,7 +78,7 @@ export function useBatchPresets() {
 
 export function useBatches() {
   return useQuery({
-    queryKey: ["creative-batches"],
+    queryKey: batchKeys.list,
     queryFn: () => creativeBatchService.list(),
   });
 }
@@ -82,7 +88,7 @@ export function useGenerateBatch() {
   return useMutation({
     mutationFn: creativeBatchService.generate,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: batchKeys.list });
       qc.invalidateQueries({ queryKey: ["creatives"] });
       toast.success("Batch de creativos generado");
     },
@@ -90,12 +96,65 @@ export function useGenerateBatch() {
   });
 }
 
+export function useGenerateBatchStream() {
+  const qc = useQueryClient();
+  const [progress, setProgress] = useState<{
+    stage: string;
+    pct: number;
+    message?: string;
+    detail?: string;
+  } | null>(null);
+  const [isPending, setIsPending] = useState(false);
+
+  const generate = async (
+    body: {
+      product_id?: string;
+      product_name: string;
+      product_description: string;
+      brand_palette?: string;
+      preset_id?: string;
+      gallery_name?: string;
+    },
+    onSuccess?: () => void,
+  ) => {
+    setIsPending(true);
+    setProgress({ stage: "connecting", pct: 2, message: "Starting batch..." });
+
+    try {
+      await creativeBatchService.generateStream(
+        body,
+        (event) => setProgress(event),
+        (_data) => {
+          setProgress(null);
+          setIsPending(false);
+          qc.invalidateQueries({ queryKey: batchKeys.list });
+          qc.invalidateQueries({ queryKey: creativeKeys.unassigned });
+          qc.invalidateQueries({ queryKey: ["org", "usage"] });
+          toast.success("Batch completed!");
+          onSuccess?.();
+        },
+        (error) => {
+          setProgress(null);
+          setIsPending(false);
+          toast.error(error);
+        },
+      );
+    } catch {
+      setProgress(null);
+      setIsPending(false);
+      toast.error("Connection error");
+    }
+  };
+
+  return { generate, progress, isPending };
+}
+
 export function useDeleteBatch() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => creativeBatchService.remove(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: batchKeys.list });
       qc.invalidateQueries({ queryKey: ["creatives"] });
       toast.success("Batch eliminado");
     },
@@ -109,7 +168,7 @@ export function useCreateGallery() {
     mutationFn: ({ name, product_id }: { name: string; product_id?: string }) =>
       creativeBatchService.createGallery(name, product_id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: batchKeys.list });
       toast.success("Galería creada");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -122,7 +181,7 @@ export function useUpdateGallery() {
     mutationFn: ({ id, ...body }: { id: string; name?: string; product_id?: string | null }) =>
       creativeBatchService.updateGallery(id, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: batchKeys.list });
       toast.success("Galería actualizada");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -135,7 +194,7 @@ export function useMoveCreative() {
     mutationFn: ({ creativeId, batch_id }: { creativeId: string; batch_id: string | null }) =>
       creativeBatchService.moveCreative(creativeId, batch_id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["creative-batches"] });
+      qc.invalidateQueries({ queryKey: batchKeys.list });
       qc.invalidateQueries({ queryKey: ["creatives"] });
       toast.success("Creativo movido");
     },

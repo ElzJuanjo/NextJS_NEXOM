@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   ImageIcon, Sparkles, Link2, Trash2, FolderOpen, ChevronDown,
-  ChevronRight, Edit3, FolderPlus, ArrowRightLeft, X,
+  ChevronRight, Edit3, FolderPlus, ArrowRightLeft, X, Monitor,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
@@ -13,11 +13,13 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useProducts } from "@/hooks/use-products";
 import {
   useCreatives, useUnassignedCreatives, useDeleteCreative,
-  useBatches, useGenerateBatch, useDeleteBatch,
+  useBatches, useGenerateBatch, useGenerateBatchStream, useDeleteBatch,
   useAssignProduct, useCreateGallery, useUpdateGallery, useMoveCreative,
 } from "@/hooks/use-creatives";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { CreativeResponse, CreativeBatchResponse } from "@/types";
+import { PlatformPreview } from "@/components/ui/PlatformPreview";
+import { useMyOrg } from "@/hooks/use-org";
 
 type ViewMode = "batches" | "product" | "unassigned";
 
@@ -33,6 +35,7 @@ export default function CreativePage() {
   const { data: unassigned } = useUnassignedCreatives();
 
   const generateBatch = useGenerateBatch();
+  const { generate: generateBatchStream, progress: batchProgress, isPending: batchStreaming } = useGenerateBatchStream();
   const deleteBatch = useDeleteBatch();
   const deleteCreative = useDeleteCreative();
   const assignProduct = useAssignProduct();
@@ -52,6 +55,9 @@ export default function CreativePage() {
   const [editingBatch, setEditingBatch] = useState<CreativeBatchResponse | null>(null);
   const [editBatchName, setEditBatchName] = useState("");
   const [movingCreative, setMovingCreative] = useState<CreativeResponse | null>(null);
+
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const { data: org } = useMyOrg();
 
   const toggleBatch = (id: string) => {
     setExpandedBatches((prev) => {
@@ -161,6 +167,7 @@ export default function CreativePage() {
                                 onAssign={() => setShowAssign(c)}
                                 onMove={() => setMovingCreative(c)}
                                 onExpand={() => setLightboxSrc(c.file_url)}
+                                onPreview={() => c.file_url && setPreviewSrc(c.file_url)}
                               />
                             ))}
                           </div>
@@ -192,6 +199,7 @@ export default function CreativePage() {
                   onAssign={() => setShowAssign(c)}
                   onMove={() => setMovingCreative(c)}
                   onExpand={() => setLightboxSrc(c.file_url)}
+                  onPreview={() => c.file_url && setPreviewSrc(c.file_url)}
                 />
               ))}
             </div>
@@ -210,6 +218,7 @@ export default function CreativePage() {
                   onAssign={() => setShowAssign(c)}
                   onMove={() => setMovingCreative(c)}
                   onExpand={() => setLightboxSrc(c.file_url)}
+                  onPreview={() => c.file_url && setPreviewSrc(c.file_url)}
                 />
               ))}
             </div>
@@ -222,53 +231,83 @@ export default function CreativePage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
 
       {/* ── Generate Batch Modal ── */}
-      <Modal open={showBatch} onClose={() => setShowBatch(false)} title="Nuevo batch de creativos" className="max-w-lg">
+      <Modal open={showBatch} onClose={() => !batchStreaming && setShowBatch(false)} title="Nuevo batch de creativos" className="max-w-lg">
         <form onSubmit={(e) => {
           e.preventDefault();
-          generateBatch.mutate(
+          generateBatchStream(
             {
-              product_name: batchForm.product_description, // el prompt usa la descripción como input principal
+              product_name: batchForm.product_description,
               product_description: batchForm.product_description,
               product_id: batchForm.product_id || undefined,
               gallery_name: batchForm.gallery_name || undefined,
               preset_id: batchForm.preset_id,
             },
-            { onSuccess: () => { setShowBatch(false); setBatchForm({ gallery_name: "", product_description: "", preset_id: "starter", product_id: "" }); } }
+            () => {
+              setShowBatch(false);
+              setBatchForm({ gallery_name: "", product_description: "", preset_id: "starter", product_id: "" });
+            },
           );
         }} className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground block mb-1.5">Nombre de galería</label>
             <input value={batchForm.gallery_name} onChange={(e) => setBatchForm({ ...batchForm, gallery_name: e.target.value })}
-              placeholder="Ej: Zapatos deportivos, iPhone Pro, etc."
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
+              placeholder="Ej: Zapatos deportivos, iPhone Pro, etc." disabled={batchStreaming}
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all disabled:opacity-50" />
             <p className="text-xs text-muted-foreground mt-1">Si ya existe una galería con este nombre, las imágenes se acumulan ahí.</p>
           </div>
           <div>
             <label className="text-sm font-medium text-foreground block mb-1.5">¿Qué quieres generar?</label>
             <textarea value={batchForm.product_description} onChange={(e) => setBatchForm({ ...batchForm, product_description: e.target.value })} required rows={3}
-              placeholder="Describe lo que quieres ver: ej. 'iPhone 15 Pro en diferentes estilos de fotografía profesional'"
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all resize-none" />
+              placeholder="Describe lo que quieres ver: ej. 'iPhone 15 Pro en diferentes estilos de fotografía profesional'" disabled={batchStreaming}
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all resize-none disabled:opacity-50" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground block mb-1.5">Vincular a producto (opcional)</label>
-            <select value={batchForm.product_id} onChange={(e) => setBatchForm({ ...batchForm, product_id: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all">
+            <select value={batchForm.product_id} onChange={(e) => setBatchForm({ ...batchForm, product_id: e.target.value })} disabled={batchStreaming}
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all disabled:opacity-50">
               <option value="">Sin vincular</option>
               {products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-sm font-medium text-foreground block mb-1.5">Cantidad</label>
-            <select value={batchForm.preset_id} onChange={(e) => setBatchForm({ ...batchForm, preset_id: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all">
+            <select value={batchForm.preset_id} onChange={(e) => setBatchForm({ ...batchForm, preset_id: e.target.value })} disabled={batchStreaming}
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all disabled:opacity-50">
               <option value="starter">3 imágenes</option>
               <option value="campaign">5 imágenes</option>
               <option value="full">10 imágenes</option>
             </select>
           </div>
-          <button type="submit" disabled={generateBatch.isPending}
+
+          {/* ── Progress bar ── */}
+          {batchStreaming && batchProgress && (
+            <div className="space-y-2 py-2 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{batchProgress.message || "Processing..."}</span>
+                <span className="text-xs text-cyan-400 font-semibold">{batchProgress.pct}%</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${batchProgress.pct}%` }}
+                />
+              </div>
+              {batchProgress.detail && (
+                <p className="text-[10px] text-muted-foreground">{batchProgress.detail}</p>
+              )}
+            </div>
+          )}
+
+          <button type="submit" disabled={batchStreaming || !batchForm.product_description.trim()}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
-            {generateBatch.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : <><Sparkles className="w-4 h-4" /> Generar</>}
+            {batchStreaming ? (
+              <>
+                <Spinner className="w-4 h-4 text-primary-foreground" />
+                Generating {batchProgress?.stage === "image_ready" ? `(${batchProgress.detail})` : "..."}
+              </>
+            ) : (
+              <><Sparkles className="w-4 h-4" /> Generar</>
+            )}
           </button>
         </form>
       </Modal>
@@ -393,6 +432,15 @@ export default function CreativePage() {
         )}
       </Modal>
 
+      {/* ── Platform Preview ── */}
+      {previewSrc && (
+        <PlatformPreview
+          src={previewSrc}
+          onClose={() => setPreviewSrc(null)}
+          brandName={org?.name ?? "your_brand"}
+        />
+      )}
+
       {/* ── Lightbox ── */}
       {lightboxSrc && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-8"
@@ -438,12 +486,14 @@ function CreativeCard({
   onAssign,
   onMove,
   onExpand,
+  onPreview,
 }: {
   creative: CreativeResponse;
   onDelete: () => void;
   onAssign: () => void;
   onMove: () => void;
   onExpand: () => void;
+  onPreview: () => void;
 }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden group">
@@ -458,6 +508,11 @@ function CreativeCard({
             className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Expandir">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onPreview(); }}
+            className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Preview en plataforma">
+            <Monitor className="w-3 h-3" />
           </button>
           <button onClick={(e) => { e.stopPropagation(); onMove(); }}
             className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

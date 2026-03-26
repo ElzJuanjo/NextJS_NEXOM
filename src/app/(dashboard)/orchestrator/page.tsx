@@ -3,21 +3,34 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Send, Bot, User, Loader2, GitBranch,
-  Plus, MessageSquare, Trash2, Edit3, Check, X,
+  Plus, MessageSquare, Trash2, Edit3, Check, X, ChevronDown,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import { useConversations, useConversation, useSendMessage, useDeleteConversation, useUpdateConversation } from "@/hooks/use-conversations";
+import { useConversations, useConversation, useSendMessageStream, useDeleteConversation, useUpdateConversation } from "@/hooks/use-conversations";
 import { useFlows } from "@/hooks/use-flows";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { AGENT_META, type ConversationMessageResponse } from "@/types";
-import { useQueryClient } from "@tanstack/react-query";
+
+
+const AGENT_OPTIONS = [
+  { id: null, label: "Orquestador", description: "Decide automáticamente el mejor agente", credits: "dinámico", color: "text-violet-400" },
+  { id: "branding", label: "Branding", description: "Identidad de marca, brand book, logo", credits: "17", color: "text-pink-400" },
+  { id: "copywriting", label: "Copywriting", description: "Textos de venta, headlines, emails", credits: "17", color: "text-emerald-400" },
+  { id: "image_gen", label: "Imágenes", description: "Generación de imágenes de producto", credits: "15", color: "text-rose-400" },
+  { id: "landing_page", label: "Landing Page", description: "Páginas de venta de alta conversión", credits: "14", color: "text-blue-400" },
+  { id: "store_dev", label: "Tienda", description: "Configuración de tienda online", credits: "14", color: "text-indigo-400" },
+  { id: "ads", label: "Anuncios", description: "Campañas Meta Ads, Google Ads, TikTok", credits: "4", color: "text-orange-400" },
+  { id: "product_search", label: "Productos", description: "Búsqueda y análisis de mercado", credits: "4", color: "text-emerald-400" },
+  { id: "conversion_opt", label: "Conversión", description: "Análisis de métricas y CRO", credits: "4", color: "text-amber-400" },
+  { id: "dropi_connector", label: "Dropi", description: "Búsqueda y sync con Dropi", credits: "2", color: "text-cyan-400" },
+];
 
 
 export default function OrchestratorPage() {
   const { data: conversations } = useConversations();
   const { data: flows } = useFlows();
-  const sendMessage = useSendMessage();
+  const { send: sendMessageStream, progress, isPending: sendPending } = useSendMessageStream();
   const deleteConvo = useDeleteConversation();
   const updateConvo = useUpdateConversation();
 
@@ -33,9 +46,11 @@ export default function OrchestratorPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const allMessages = [...(activeConvo?.messages ?? []), ...pendingMessages];
-  const queryClient = useQueryClient();
 
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [showPanel, setShowPanel] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,7 +58,7 @@ export default function OrchestratorPage() {
 
   const handleSend = () => {
     const text = input.trim();
-    if (!text || sendMessage.isPending) return;
+    if (!text || sendPending) return;
 
     const tempUserMsg: ConversationMessageResponse = {
       id: `temp-${Date.now()}`,
@@ -57,15 +72,16 @@ export default function OrchestratorPage() {
     setInput("");
     if (inputRef.current) inputRef.current.style.height = "36px";
 
-    sendMessage.mutate(
-      { content: text, conversation_id: activeConvoId ?? undefined },
+    sendMessageStream(
       {
-        onSuccess: (data) => {
-          setActiveConvoId(data.conversation_id);
-          setPendingMessages([]);
-        },
-        onError: () => setPendingMessages([]),
-      }
+        content: text,
+        conversation_id: activeConvoId ?? undefined,
+        force_agent: selectedAgent ?? undefined,
+      },
+      (data) => {
+        setActiveConvoId(data.conversation_id);
+        setPendingMessages([]);
+      },
     );
   };
 
@@ -86,9 +102,9 @@ export default function OrchestratorPage() {
     <div className="flex flex-col h-full">
       <Header title="Orquestador" subtitle="Gestiona y coordina los flujos entre agentes" />
 
-      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
         {/* ── Chat Panel ── */}
-        <div className="flex-1 flex flex-col border-r border-border min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {allMessages.length === 0 && (
@@ -96,7 +112,7 @@ export default function OrchestratorPage() {
                 <Bot className="w-12 h-12 text-violet-400 mb-3" />
                 <p className="text-sm text-foreground font-medium">Hola, soy el Orquestador de NexOS</p>
                 <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                  Puedo ayudarte con búsqueda de productos, branding, copywriting, ads, landing pages y más. Detecto automáticamente qué agente necesitas según tu mensaje.
+                  Puedo ayudarte con búsqueda de productos, branding, copywriting, ads, landing pages y más.
                 </p>
               </div>
             )}
@@ -117,7 +133,7 @@ export default function OrchestratorPage() {
                     {isUser ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
                   </div>
 
-                  <div className={cn("max-w-[75%] space-y-1 flex flex-col", isUser ? "items-end" : "items-start")}>
+                  <div className={cn("max-w-[85%] lg:max-w-[75%] space-y-1 flex flex-col", isUser ? "items-end" : "items-start")}>
                     {!isUser && meta && (
                       <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", meta.color, meta.activeBg)}>
                         {meta.label}
@@ -136,27 +152,18 @@ export default function OrchestratorPage() {
                           {msg.content.includes("⚠️ *Response truncated") && (
                             <button
                               onClick={() => {
-                                const truncatedContent = msg.content.slice(-500).replace("---\n⚠️ *Response truncated due to limit.*", "").trim();
-                                sendMessage.mutate(
-                                  {
-                                    content: `Continue generating from exactly where you left off. The last part of your response was: "${truncatedContent.slice(-200)}..." — pick up right there without repeating anything.`,
-                                    conversation_id: activeConvoId ?? undefined,
-                                  },
-                                  {
-                                    onSuccess: (data) => {
-                                      setActiveConvoId(data.conversation_id);
-                                      setPendingMessages([]);
-                                    },
-                                  }
+                                sendMessageStream(
+                                  { content: "Continue generating from exactly where you left off...", conversation_id: activeConvoId ?? undefined, force_agent: selectedAgent ?? undefined },
+                                  (data) => { setActiveConvoId(data.conversation_id); setPendingMessages([]); },
                                 );
                               }}
-                              disabled={sendMessage.isPending}
+                              disabled={sendPending}
                               className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/20 text-amber-400 text-xs font-medium hover:bg-amber-400/20 transition-colors disabled:opacity-50"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                               </svg>
-                              {sendMessage.isPending ? "Generando..." : "Continue generating"}
+                              {sendPending ? "Generando..." : "Continue generating"}
                             </button>
                           )}
                           {images && images.length > 0 && (
@@ -180,15 +187,25 @@ export default function OrchestratorPage() {
               );
             })}
 
-            {sendMessage.isPending && (
+            {sendPending && (
               <div className="flex gap-3 animate-fade-in">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse-slow" style={{ animationDelay: `${i * 150}ms` }} />
-                  ))}
+                <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 min-w-[200px] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{progress?.message || "Processing..."}</span>
+                    <span className="text-xs text-violet-400 font-medium">{progress?.pct ?? 0}%</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${progress?.pct ?? 0}%` }} />
+                  </div>
+                  {progress?.agent && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Agent: {AGENT_META.find((a) => a.id === progress.agent)?.label ?? progress.agent}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -196,8 +213,8 @@ export default function OrchestratorPage() {
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-border shrink-0">
-            <div className="flex items-end gap-2 bg-secondary border border-border rounded-xl overflow-hidden focus-within:border-ring focus-within:ring-1 focus-within:ring-ring transition-all p-3">
+          <div className="p-3 sm:p-4 border-t border-border shrink-0 space-y-1.5">
+            <div className="flex items-end gap-2 bg-secondary border border-border rounded-xl focus-within:border-ring focus-within:ring-1 focus-within:ring-ring transition-all p-2">
               <textarea ref={inputRef} value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
@@ -206,27 +223,55 @@ export default function OrchestratorPage() {
                   el.style.height = Math.min(el.scrollHeight, 200) + "px";
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Escribe tu mensaje — el orquestador detecta automáticamente qué agente usar..."
+                placeholder="Escribe tu mensaje..."
                 rows={1}
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none leading-relaxed scrollbar-thin"
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none leading-relaxed scrollbar-thin min-w-0"
                 style={{ minHeight: "36px", maxHeight: "200px" }}
               />
-              <button onClick={handleSend} disabled={!input.trim() || sendMessage.isPending}
+              <button onClick={handleSend} disabled={!input.trim() || sendPending}
                 className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0 disabled:opacity-40 transition-all hover:opacity-90">
-                {sendMessage.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                {sendPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               </button>
+            </div>
+            <div className="flex items-center gap-2 px-1">
+              <AgentSelector selected={selectedAgent} onChange={setSelectedAgent} />
+              <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">
+                {selectedAgent
+                  ? `${AGENT_OPTIONS.find(a => a.id === selectedAgent)?.label} · ${AGENT_OPTIONS.find(a => a.id === selectedAgent)?.credits} créditos/msg`
+                  : "Créditos dinámicos según el agente"
+                }
+              </span>
             </div>
           </div>
         </div>
 
+        {/* ── Mobile toggle for right panel ── */}
+        <button
+          onClick={() => setShowPanel(!showPanel)}
+          className="lg:hidden fixed bottom-24 right-4 z-20 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
+        >
+          <MessageSquare className="w-4 h-4" />
+        </button>
+
         {/* ── Right Panel ── */}
-        <div className="w-full lg:w-80 xl:w-96 overflow-y-auto p-4 space-y-4 shrink-0 border-t lg:border-t-0 border-border">
-          <button onClick={handleNewChat}
+        <div className={cn(
+          "lg:w-80 xl:w-96 overflow-y-auto p-4 space-y-4 shrink-0 border-l border-border bg-background",
+          "fixed inset-0 z-30 lg:static lg:z-auto transition-transform duration-300",
+          showPanel ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+        )}>
+          {/* Mobile close */}
+          <div className="flex items-center justify-between lg:hidden mb-2">
+            <span className="text-sm font-semibold text-foreground">Panel</span>
+            <button onClick={() => setShowPanel(false)} className="p-1.5 rounded-lg hover:bg-accent">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button onClick={() => { handleNewChat(); setShowPanel(false); }}
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-all">
             <Plus className="w-4 h-4" /> Nuevo chat
           </button>
 
-          {/* Recent conversations */}
           <div>
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2 mb-2">
               <MessageSquare className="w-3.5 h-3.5" /> Conversaciones
@@ -246,7 +291,7 @@ export default function OrchestratorPage() {
                         isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                       )}
                     >
-                      <div className="flex-1 min-w-0" onClick={() => { setActiveConvoId(convo.id); setPendingMessages([]); }}>
+                      <div className="flex-1 min-w-0" onClick={() => { setActiveConvoId(convo.id); setPendingMessages([]); setShowPanel(false); }}>
                         {editingTitle === convo.id ? (
                           <div className="flex items-center gap-1">
                             <input value={editTitleValue} onChange={(e) => setEditTitleValue(e.target.value)}
@@ -288,7 +333,6 @@ export default function OrchestratorPage() {
             )}
           </div>
 
-          {/* Flows */}
           <div>
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2 mb-2">
               <GitBranch className="w-3.5 h-3.5" /> Flujos
@@ -317,6 +361,7 @@ export default function OrchestratorPage() {
           </div>
         </div>
       </div>
+
       {/* Lightbox */}
       {lightboxSrc && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-8"
@@ -411,5 +456,70 @@ function CopyButton({ text }: { text: string }) {
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
       )}
     </button>
+  );
+}
+
+
+function AgentSelector({
+  selected,
+  onChange,
+}: {
+  selected: string | null;
+  onChange: (agent: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = AGENT_OPTIONS.find((a) => a.id === selected) || AGENT_OPTIONS[0];
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-accent transition-colors"
+      >
+        <div className={cn("w-2 h-2 rounded-full", selected ? "bg-current" : "bg-violet-400")}
+          style={{ color: selected ? undefined : undefined }}
+        />
+        <span className={cn("font-medium", current.color)}>{current.label}</span>
+        <ChevronDown className={cn("w-3 h-3 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full left-0 mb-2 w-72 bg-card border border-border rounded-xl shadow-xl z-40 py-1 max-h-80 overflow-y-auto scrollbar-thin animate-fade-in">
+            {AGENT_OPTIONS.map((agent) => {
+              const isActive = agent.id === selected;
+              return (
+                <button
+                  key={agent.id ?? "orchestrator"}
+                  onClick={() => { onChange(agent.id); setOpen(false); }}
+                  className={cn(
+                    "w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent transition-colors",
+                    isActive && "bg-accent"
+                  )}
+                >
+                  <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", agent.color)} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className={cn("text-sm font-medium", agent.color)}>{agent.label}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {agent.credits === "dinámico" ? "créditos dinámicos" : `${agent.credits} créditos/msg`}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{agent.description}</p>
+                  </div>
+                  {isActive && (
+                    <svg className="w-4 h-4 text-violet-400 shrink-0 mt-1" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

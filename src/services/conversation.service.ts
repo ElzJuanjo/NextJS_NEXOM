@@ -3,6 +3,7 @@ import type {
   ConversationResponse, ConversationDetailResponse,
   SendMessageResponse,
 } from "@/types";
+import { getAccessToken } from "@/lib/api-client";
 
 const BASE = "/api/v1/conversations";
 
@@ -19,7 +20,7 @@ export const conversationService = {
     return data;
   },
 
-  async send(body: { content: string; conversation_id?: string }) {
+  async send(body: { content: string; conversation_id?: string; force_agent?: string }) {
     const { data } = await apiClient.post<SendMessageResponse>(`${BASE}/send`, body);
     return data;
   },
@@ -31,5 +32,61 @@ export const conversationService = {
 
   async remove(conversationId: string) {
     await apiClient.delete(`${BASE}/${conversationId}`);
+  },
+
+  async sendStream(
+    body: { content: string; conversation_id?: string; force_agent?: string },
+    onProgress: (event: { stage: string; pct: number; agent?: string; message?: string }) => void,
+    onDone: (data: SendMessageResponse) => void,
+    onError: (error: string) => void,
+  ): Promise<void> {
+    const token = getAccessToken();
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${BASE}/send/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok || !response.body) {
+      onError(`HTTP ${response.status}`);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() || "";
+
+      for (const block of lines) {
+        if (!block.trim()) continue;
+
+        const eventMatch = block.match(/^event: (\w+)/m);
+        const dataMatch = block.match(/^data: (.+)$/m);
+
+        if (!eventMatch || !dataMatch) continue;
+
+        const eventType = eventMatch[1];
+        const data = JSON.parse(dataMatch[1]);
+
+        if (eventType === "progress") {
+          onProgress(data);
+        } else if (eventType === "done") {
+          onDone(data);
+        } else if (eventType === "error") {
+          onError(data.error);
+        }
+      }
+    }
   },
 };
