@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { creativeService } from "@/services/creative.service";
 import { creativeBatchService } from "@/services/creative-batch.service";
+import { showProgressToast, dismissProgressToast } from "@/components/ui/ProgressToast";
 import toast from "react-hot-toast";
 import { useState } from "react";
 
@@ -123,19 +124,29 @@ export function useGenerateBatchStream() {
     try {
       await creativeBatchService.generateStream(
         body,
-        (event) => setProgress(event),
+        (event) => {
+          setProgress(event);
+          showProgressToast({
+            id: "batch-progress",
+            message: event.message || "Generating...",
+            pct: event.pct,
+            detail: event.detail,
+          });
+        },
         (_data) => {
           setProgress(null);
           setIsPending(false);
           qc.invalidateQueries({ queryKey: batchKeys.list });
           qc.invalidateQueries({ queryKey: creativeKeys.unassigned });
           qc.invalidateQueries({ queryKey: ["org", "usage"] });
+          dismissProgressToast("batch-progress");
           toast.success("Batch completed!");
           onSuccess?.();
         },
         (error) => {
           setProgress(null);
           setIsPending(false);
+          dismissProgressToast("batch-progress");
           toast.error(error);
         },
       );

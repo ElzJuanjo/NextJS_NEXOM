@@ -5,7 +5,7 @@ import { Package, Plus, Edit3, Trash2, DollarSign, ImageOff, Check, ImageIcon } 
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
 import { Modal } from "@/components/ui/Modal";
-import { CardSkeleton } from "@/components/ui/Skeleton";
+import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "@/hooks/use-products";
 import { useBrands } from "@/hooks/use-brands";
@@ -135,7 +135,7 @@ export default function ProductsPage() {
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
+            {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
           </div>
         ) : !filtered.length ? (
           <EmptyState

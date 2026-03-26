@@ -12,7 +12,7 @@ import { useFlows } from "@/hooks/use-flows";
 import { useFadeIn, useStagger } from "@/hooks/use-anime";
 import { cn, formatRelativeTime, getStatusBadge } from "@/lib/utils";
 import { AGENT_META } from "@/types";
-import { CardSkeleton } from "@/components/ui/Skeleton";
+import { ActivityListSkeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -99,9 +99,7 @@ export default function DashboardPage() {
             </div>
 
             {tasksLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
-              </div>
+              <ActivityListSkeleton rows={6} />
             ) : !tasks?.length ? (
               <EmptyState
                 icon={Activity}

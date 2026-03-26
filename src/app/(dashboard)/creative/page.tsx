@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
-import { CardSkeleton } from "@/components/ui/Skeleton";
+import { GallerySkeleton, CreativeGridSkeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { useProducts } from "@/hooks/use-products";
@@ -120,7 +120,7 @@ export default function CreativePage() {
         {/* ── Batches (Gallery) View ── */}
         {viewMode === "batches" && (
           batchLoading ? (
-            <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
+            <GallerySkeleton />
           ) : !batches?.length ? (
             <EmptyState icon={FolderOpen} title="Sin galerías aún"
               description="Genera tu primer batch de creativos o crea una galería vacía."
@@ -184,9 +184,7 @@ export default function CreativePage() {
         {/* ── Product View ── */}
         {viewMode === "product" && (
           crLoading || prodLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
-            </div>
+            <CreativeGridSkeleton count={8} />
           ) : !productCreatives?.length ? (
             <EmptyState icon={ImageIcon} title="Sin creativos para este producto"
               description="Genera creativos vinculados a este producto usando un batch o el agente de imágenes."
