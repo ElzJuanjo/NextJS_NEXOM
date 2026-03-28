@@ -1,5 +1,5 @@
 import apiClient from "@/lib/api-client";
-import type { AuthResponse, AuthLoginResponse, UserResponse, VerifyEmailResponse, ReferralInfo } from "@/types";
+import type { AuthResponse, AuthLoginResponse, UserResponse, VerifyEmailResponse, ReferralDetailInfo } from "@/types";
 
 const BASE = "/api/v1/auth";
 
@@ -50,18 +50,8 @@ export const authService = {
     return data;
   },
 
-  async resendVerification(email: string): Promise<{ message: string }> {
-    const { data } = await apiClient.post<{ message: string }>(`${BASE}/resend-verification`, { email });
-    return data;
-  },
-
   getGoogleLoginUrl(): string {
     return `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}${BASE}/google/login`;
-  },
-
-  async getReferralInfo(): Promise<ReferralInfo> {
-    const { data } = await apiClient.get<ReferralInfo>(`${BASE}/me/referral`);
-    return data;
   },
 
   async changePassword(current_password: string, new_password: string) {
@@ -84,6 +74,23 @@ export const authService = {
 
   async disable2FA(code: string) {
     const { data } = await apiClient.post<{ message: string; is_2fa_enabled: boolean }>(`${BASE}/2fa/disable`, { code });
+    return data;
+  },
+
+  async getReferralInfo() {
+    const { data } = await apiClient.get<ReferralDetailInfo>("/api/v1/auth/me/referral");
+    return data;
+  },
+
+  async getVerificationStatus() {
+    const { data } = await apiClient.get<{ is_verified: boolean; email: string; verification_expires_hours: number }>(
+      "/api/v1/auth/me/verification-status"
+    );
+    return data;
+  },
+
+  async resendVerification(email: string) {
+    const { data } = await apiClient.post("/api/v1/auth/resend-verification", { email });
     return data;
   },
 };

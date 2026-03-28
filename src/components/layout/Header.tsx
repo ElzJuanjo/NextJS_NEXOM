@@ -1,32 +1,25 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Search, Bell, Plus, Command, Sun, Moon } from "lucide-react";
+import { useState, useRef } from "react";
+import { Search, Plus, Sun, Moon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/providers/Providers";
-import anime from "animejs";
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
   action?: { label: string; onClick: () => void };
+  search?: {
+    placeholder: string;
+    value: string;
+    onChange: (value: string) => void;
+  };
 }
 
-export function Header({ title, subtitle, action }: HeaderProps) {
+export function Header({ title, subtitle, action, search }: HeaderProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const { theme, toggle } = useTheme();
   const searchRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (searchRef.current) {
-      anime({
-        targets: searchRef.current,
-        width: searchFocused ? 220 : 160,
-        duration: 200,
-        easing: "easeOutQuad",
-      });
-    }
-  }, [searchFocused]);
 
   return (
     <header className="h-16 flex items-center justify-between px-6 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
@@ -36,27 +29,34 @@ export function Header({ title, subtitle, action }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div
-          ref={searchRef}
-          style={{ width: 160 }}
-          className={cn(
-            "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors text-sm",
-            searchFocused ? "border-ring bg-card" : "border-border bg-card/50 text-muted-foreground"
-          )}
-        >
-          <Search className="w-3.5 h-3.5 shrink-0" />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            className="bg-transparent outline-none text-sm placeholder:text-muted-foreground w-full text-foreground"
-          />
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Command className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">K</span>
+        {search ? (
+          <div
+            ref={searchRef}
+            style={{ width: searchFocused ? 260 : 180 }}
+            className={cn(
+              "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm",
+              searchFocused ? "border-ring bg-card" : "border-border bg-card/50 text-muted-foreground"
+            )}
+          >
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <input
+              type="text"
+              placeholder={search.placeholder}
+              value={search.value}
+              onChange={(e) => search.onChange(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              className="bg-transparent outline-none text-sm placeholder:text-muted-foreground w-full text-foreground"
+            />
+            {search.value && (
+              <button onClick={() => search.onChange("")} className="shrink-0 text-muted-foreground hover:text-foreground">
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
-        </div>
+        ) : (
+          <div className="hidden sm:block w-[180px]" />
+        )}
 
         <button
           onClick={toggle}
@@ -68,11 +68,6 @@ export function Header({ title, subtitle, action }: HeaderProps) {
           ) : (
             <Moon className="w-4 h-4 text-muted-foreground" />
           )}
-        </button>
-
-        <button className="relative w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-accent transition-colors">
-          <Bell className="w-4 h-4 text-muted-foreground" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-violet-500" />
         </button>
 
         {action && (

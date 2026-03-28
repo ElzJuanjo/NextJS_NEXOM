@@ -140,14 +140,6 @@ export function useVerifyEmail() {
   });
 }
 
-export function useResendVerification() {
-  return useMutation({
-    mutationFn: (email: string) => authService.resendVerification(email),
-    onSuccess: (data) => toast.success(data.message),
-    onError: (err: Error) => toast.error(err.message),
-  });
-}
-
 export function useChangePassword() {
   return useMutation({
     mutationFn: ({ current_password, new_password }: { current_password: string; new_password: string }) =>
@@ -184,6 +176,28 @@ export function useDisable2FA() {
       toast.success(data.message);
       qc.invalidateQueries({ queryKey: authKeys.me });
     },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useVerificationStatus() {
+  return useQuery({
+    queryKey: ["auth", "verification-status"],
+    queryFn: () => authService.getVerificationStatus(),
+  });
+}
+
+export function useReferralInfo() {
+  return useQuery({
+    queryKey: ["auth", "referral"],
+    queryFn: () => authService.getReferralInfo(),
+  });
+}
+
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: (email: string) => authService.resendVerification(email),
+    onSuccess: () => toast.success("Verification email sent!"),
     onError: (err: Error) => toast.error(err.message),
   });
 }

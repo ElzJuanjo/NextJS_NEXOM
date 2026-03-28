@@ -2,15 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  Send, Bot, User, Loader2, GitBranch,
+  Send, Bot, User, Loader2,
   Plus, MessageSquare, Trash2, Edit3, Check, X, ChevronDown,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { useConversations, useConversation, useSendMessageStream, useDeleteConversation, useUpdateConversation } from "@/hooks/use-conversations";
-import { useFlows } from "@/hooks/use-flows";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { AGENT_META, type ConversationMessageResponse } from "@/types";
+import { useSearchParams } from "next/navigation";
 
 
 const AGENT_OPTIONS = [
@@ -28,8 +28,9 @@ const AGENT_OPTIONS = [
 
 
 export default function OrchestratorPage() {
+  const searchParams = useSearchParams();
+
   const { data: conversations } = useConversations();
-  const { data: flows } = useFlows();
   const { send: sendMessageStream, progress, isPending: sendPending } = useSendMessageStream();
   const deleteConvo = useDeleteConversation();
   const updateConvo = useUpdateConversation();
@@ -52,9 +53,18 @@ export default function OrchestratorPage() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [showPanel, setShowPanel] = useState(false);
 
+  const [convoSearch, setConvoSearch] = useState("");
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [allMessages.length]);
+
+  useEffect(() => {
+    const convoParam = searchParams.get("convo");
+    if (convoParam && convoParam !== activeConvoId) {
+      setActiveConvoId(convoParam);
+    }
+  }, [searchParams]);
 
   const handleSend = () => {
     const text = input.trim();
@@ -100,7 +110,9 @@ export default function OrchestratorPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="Orquestador" subtitle="Gestiona y coordina los flujos entre agentes" />
+      <Header title="Orquestador" subtitle="Gestiona y coordina los flujos entre agentes"
+        search={{ placeholder: "Buscar conversaciones...", value: convoSearch, onChange: setConvoSearch }}
+      />
 
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
         {/* ── Chat Panel ── */}
@@ -281,84 +293,62 @@ export default function OrchestratorPage() {
               <p className="text-xs text-muted-foreground text-center py-4">Sin conversaciones aún</p>
             ) : (
               <div className="space-y-1">
-                {conversations.map((convo) => {
-                  const isActive = activeConvoId === convo.id;
-                  const agentMeta = AGENT_META.find((a) => a.id === convo.agent_type);
+                {conversations
+                  .filter((convo) =>
+                    !convoSearch || convo.title?.toLowerCase().includes(convoSearch.toLowerCase())
+                  )
+                  .map((convo) => {
+                    const isActive = activeConvoId === convo.id;
+                    const agentMeta = AGENT_META.find((a) => a.id === convo.agent_type);
 
-                  return (
-                    <div key={convo.id}
-                      className={cn("group flex items-center gap-2 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
-                        isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                      )}
-                    >
-                      <div className="flex-1 min-w-0" onClick={() => { setActiveConvoId(convo.id); setPendingMessages([]); setShowPanel(false); }}>
-                        {editingTitle === convo.id ? (
-                          <div className="flex items-center gap-1">
-                            <input value={editTitleValue} onChange={(e) => setEditTitleValue(e.target.value)}
-                              className="flex-1 bg-secondary border border-border rounded px-1.5 py-0.5 text-xs text-foreground outline-none"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") { updateConvo.mutate({ id: convo.id, title: editTitleValue }); setEditingTitle(null); }
-                                if (e.key === "Escape") setEditingTitle(null);
-                              }}
-                            />
-                            <button onClick={() => { updateConvo.mutate({ id: convo.id, title: editTitleValue }); setEditingTitle(null); }}
-                              className="p-0.5 text-emerald-400"><Check className="w-3 h-3" /></button>
-                            <button onClick={() => setEditingTitle(null)} className="p-0.5 text-muted-foreground"><X className="w-3 h-3" /></button>
+                    return (
+                      <div key={convo.id}
+                        className={cn("group flex items-center gap-2 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
+                          isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        )}
+                      >
+                        <div className="flex-1 min-w-0" onClick={() => { setActiveConvoId(convo.id); setPendingMessages([]); setShowPanel(false); }}>
+                          {editingTitle === convo.id ? (
+                            <div className="flex items-center gap-1">
+                              <input value={editTitleValue} onChange={(e) => setEditTitleValue(e.target.value)}
+                                className="flex-1 bg-secondary border border-border rounded px-1.5 py-0.5 text-xs text-foreground outline-none"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") { updateConvo.mutate({ id: convo.id, title: editTitleValue }); setEditingTitle(null); }
+                                  if (e.key === "Escape") setEditingTitle(null);
+                                }}
+                              />
+                              <button onClick={() => { updateConvo.mutate({ id: convo.id, title: editTitleValue }); setEditingTitle(null); }}
+                                className="p-0.5 text-emerald-400"><Check className="w-3 h-3" /></button>
+                              <button onClick={() => setEditingTitle(null)} className="p-0.5 text-muted-foreground"><X className="w-3 h-3" /></button>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-xs font-medium truncate">{convo.title ?? "Sin título"}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {convo.message_count} msgs
+                                {agentMeta && <> · <span className={agentMeta.color}>{agentMeta.label}</span></>}
+                                {convo.last_message_at && <> · {formatRelativeTime(convo.last_message_at)}</>}
+                              </p>
+                            </>
+                          )}
+                        </div>
+
+                        {editingTitle !== convo.id && (
+                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingTitle(convo.id); setEditTitleValue(convo.title ?? ""); }}
+                              className="p-1 rounded hover:bg-accent"><Edit3 className="w-3 h-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar conversación?")) { deleteConvo.mutate(convo.id); if (activeConvoId === convo.id) handleNewChat(); } }}
+                              className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
                           </div>
-                        ) : (
-                          <>
-                            <p className="text-xs font-medium truncate">{convo.title ?? "Sin título"}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {convo.message_count} msgs
-                              {agentMeta && <> · <span className={agentMeta.color}>{agentMeta.label}</span></>}
-                              {convo.last_message_at && <> · {formatRelativeTime(convo.last_message_at)}</>}
-                            </p>
-                          </>
                         )}
                       </div>
-
-                      {editingTitle !== convo.id && (
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          <button onClick={(e) => { e.stopPropagation(); setEditingTitle(convo.id); setEditTitleValue(convo.title ?? ""); }}
-                            className="p-1 rounded hover:bg-accent"><Edit3 className="w-3 h-3" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar conversación?")) { deleteConvo.mutate(convo.id); if (activeConvoId === convo.id) handleNewChat(); } }}
-                            className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
           </div>
 
-          <div>
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2 mb-2">
-              <GitBranch className="w-3.5 h-3.5" /> Flujos
-            </h2>
-            {!flows?.length ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Sin flujos activos</p>
-            ) : (
-              <div className="space-y-2">
-                {flows.slice(0, 5).map((flow) => (
-                  <div key={flow.id} className="bg-card border border-border rounded-lg p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-foreground truncate">{flow.name}</p>
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full border font-medium",
-                        flow.status === "running" ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" : "text-muted-foreground bg-muted border-border"
-                      )}>{flow.status}</span>
-                    </div>
-                    {flow.status === "running" && (
-                      <div className="h-1 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-700" style={{ width: `${flow.progress_pct}%` }} />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 

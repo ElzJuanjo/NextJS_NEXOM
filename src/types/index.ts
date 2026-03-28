@@ -42,6 +42,14 @@ export interface ReferralInfo {
   total_referrals: number;
 }
 
+export interface ReferralDetailInfo {
+  referral_code: string;
+  referral_link: string;
+  total_referrals: number;
+  credits_earned: number;
+  referrals: Array<{ email: string; name: string; joined_at: string }>;
+}
+
 // ── Plans ───────────────────────────────────────────────────────────────────
 
 export interface PlanResponse {
@@ -140,8 +148,7 @@ export interface ExecuteAgentResponse {
   status: string;
   content: string | null;
   error_message: string | null;
-  tokens_used: number | null;
-  cost_usd: number | null;
+  credits_used: number | null;
   duration_ms: number | null;
   model: string | null;
   scraped_sources: Record<string, unknown> | null;
@@ -172,7 +179,6 @@ export interface FlowResponse {
   status: string;
   progress_pct: number;
   started_at: string | null;
-  estimated_end_at: string | null;
   completed_at: string | null;
   context: Record<string, unknown> | null;
   steps: FlowStepResponse[];

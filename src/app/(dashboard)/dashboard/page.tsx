@@ -1,12 +1,10 @@
 "use client";
 
-import { Activity, CheckCircle2, Cpu, TrendingUp, Clock, Zap } from "lucide-react";
+import { Activity, CheckCircle2, Cpu, TrendingUp, Zap, Mail } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { CreditUsage } from "@/components/dashboard/CreditUsage";
 import { EmptyState } from "@/components/empty-states/EmptyState";
-import { useMe } from "@/hooks/use-auth";
-import { useMyOrg } from "@/hooks/use-org";
 import { useAgentTasks, useAvailableAgents } from "@/hooks/use-agents";
 import { useFlows } from "@/hooks/use-flows";
 import { useFadeIn, useStagger } from "@/hooks/use-anime";
@@ -14,13 +12,18 @@ import { cn, formatRelativeTime, getStatusBadge } from "@/lib/utils";
 import { AGENT_META } from "@/types";
 import { ActivityListSkeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useVerificationStatus, useResendVerification, useMe } from "@/hooks/use-auth";
+import { useState, useEffect } from "react";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data: user } = useMe();
-  const { data: org } = useMyOrg();
   const { data: tasks, isLoading: tasksLoading } = useAgentTasks(undefined, 50);
   const { data: agents } = useAvailableAgents();
   const { data: flows } = useFlows();
+
+  const totalFlows = flows?.length ?? 0;
 
   const bannerRef = useFadeIn<HTMLDivElement>();
   const gridRef = useStagger<HTMLDivElement>({
@@ -29,6 +32,35 @@ export default function DashboardPage() {
     duration: 350,
     easing: "easeOutCubic",
   });
+
+  const { data: verificationStatus } = useVerificationStatus();
+  const resendVerification = useResendVerification();
+  const RESEND_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+  const getResendRemaining = () => {
+    if (typeof window === "undefined") return 0;
+    const lastSent = localStorage.getItem("nexos_resend_at");
+    if (!lastSent) return 0;
+    const elapsed = Date.now() - parseInt(lastSent, 10);
+    const remaining = RESEND_COOLDOWN_MS - elapsed;
+    return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
+  };
+
+  const [resendCooldown, setResendCooldown] = useState(getResendRemaining);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const formatCooldown = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  };
 
   const displayName = user?.full_name?.split(" ")[0] ?? "Usuario";
   const completedTasks = tasks?.filter((t) => t.status === "completed").length ?? 0;
@@ -48,7 +80,7 @@ export default function DashboardPage() {
       <Header
         title="Dashboard"
         subtitle="Vista general del sistema de agentes"
-        action={{ label: "Nuevo proceso", onClick: () => { } }}
+        action={{ label: "Nuevo proceso", onClick: () => router.push("/orchestrator") }}
       />
 
       <div className="flex-1 p-6 space-y-6">
@@ -76,12 +108,37 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Verification banner */}
+        {verificationStatus && !verificationStatus.is_verified && (
+          <div className="flex items-center gap-3 px-5 py-3 rounded-xl bg-amber-400/10 border border-amber-400/20 animate-fade-in">
+            <Mail className="w-5 h-5 text-amber-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Verify your email</p>
+              <p className="text-xs text-muted-foreground">
+                We sent a verification link to <span className="text-foreground">{verificationStatus.email}</span>.
+                The link expires in {verificationStatus.verification_expires_hours}h.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                resendVerification.mutate(verificationStatus.email);
+                localStorage.setItem("nexos_resend_at", Date.now().toString());
+                setResendCooldown(RESEND_COOLDOWN_MS / 1000);
+              }}
+              disabled={resendVerification.isPending || resendCooldown > 0}
+              className="px-3 py-1.5 rounded-lg bg-amber-400/20 text-amber-400 text-xs font-medium hover:bg-amber-400/30 transition-colors shrink-0 disabled:opacity-50"
+            >
+              {resendVerification.isPending ? "Sending..." : resendCooldown > 0 ? `Wait ${formatCooldown(resendCooldown)}` : "Resend email"}
+            </button>
+          </div>
+        )}
+
         {/* Stats grid */}
         <div ref={gridRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard title="Tareas totales" value={totalTasks} icon={Activity} iconColor="text-violet-400" delay={0.05} />
           <StatsCard title="Completadas" value={completedTasks} change={`${successRate}% tasa de éxito`} positive icon={CheckCircle2} iconColor="text-emerald-400" delay={0.1} />
           <StatsCard title="Agentes" value={agents?.length ?? 0} icon={Cpu} iconColor="text-blue-400" delay={0.15} />
-          <StatsCard title="Flujos activos" value={runningFlows} icon={TrendingUp} iconColor="text-pink-400" delay={0.2} />
+          <StatsCard title="Flujos" value={totalFlows} icon={TrendingUp} iconColor="text-pink-400" delay={0.2} />
         </div>
 
         {/* Main content */}
@@ -93,7 +150,7 @@ export default function DashboardPage() {
                 <Zap className="w-4 h-4 text-muted-foreground" />
                 Actividad reciente
               </h2>
-              <Link href="/flows" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+              <Link href="/activity" className="text-xs text-muted-foreground hover:text-primary transition-colors">
                 Ver todo →
               </Link>
             </div>
@@ -105,7 +162,7 @@ export default function DashboardPage() {
                 icon={Activity}
                 title="Sin actividad aún"
                 description="Ejecuta tu primer agente desde el Orquestador para ver la actividad aquí."
-                action={{ label: "Ir al Orquestador", onClick: () => { } }}
+                action={{ label: "Ir al Orquestador", onClick: () => router.push("/orchestrator") }}
               />
             ) : (
               <div className="space-y-2">

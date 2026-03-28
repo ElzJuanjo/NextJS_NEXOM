@@ -9,8 +9,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn, formatCredits, formatCurrency } from "@/lib/utils";
 import { CreditUsage } from "@/components/dashboard/CreditUsage";
 import { Skeleton } from "@/components/ui/Skeleton";
-
-import { useMe, useChangePassword, useSetup2FA, useVerify2FA, useDisable2FA, useReferral } from "@/hooks/use-auth";
+import { useMe, useChangePassword, useSetup2FA, useVerify2FA, useDisable2FA, useReferralInfo } from "@/hooks/use-auth";
 import toast from "react-hot-toast";
 
 const tabs = [
@@ -20,61 +19,87 @@ const tabs = [
   { id: "security", label: "Seguridad", icon: Shield },
 ];
 
-function ReferralCard() {
-  const { data: referral, isLoading } = useReferral();
 
-  const copyLink = () => {
-    if (referral?.referral_link) {
-      navigator.clipboard.writeText(referral.referral_link);
-      toast.success("Link copiado al portapapeles");
-    }
-  };
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Referral Card                                                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+function ReferralCard() {
+  const { data: referral, isLoading } = useReferralInfo();
 
   if (isLoading) return <Skeleton className="h-36 w-full rounded-xl" />;
   if (!referral) return null;
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Gift className="w-4 h-4 text-violet-400" />
-        <h3 className="text-base font-semibold text-foreground">Programa de referidos</h3>
-      </div>
+      <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+        <Gift className="w-4 h-4 text-violet-400" /> Programa de referidos
+      </h3>
 
-      <div className="flex items-center gap-3 bg-secondary rounded-lg p-3">
-        <input
-          readOnly
-          value={referral.referral_link}
-          className="flex-1 bg-transparent text-sm text-foreground outline-none truncate"
-        />
-        <button
-          onClick={copyLink}
-          className="shrink-0 p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-          title="Copiar link"
-        >
-          <Copy className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="flex items-center gap-6">
-        <div>
-          <p className="text-xs text-muted-foreground">Tu código</p>
-          <p className="text-sm font-mono font-semibold text-foreground">{referral.referral_code}</p>
-        </div>
-        <div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-foreground">{referral.total_referrals}</p>
           <p className="text-xs text-muted-foreground">Referidos</p>
-          <p className="text-sm font-semibold text-foreground flex items-center gap-1">
-            <Users className="w-3.5 h-3.5 text-violet-400" />
-            {referral.total_referrals}
-          </p>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-emerald-400">+{referral.credits_earned}</p>
+          <p className="text-xs text-muted-foreground">Créditos ganados</p>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-violet-400">15</p>
+          <p className="text-xs text-muted-foreground">Créditos por referido</p>
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Comparte tu link y cuando alguien se registre, aparecerá en tus estadísticas.
-      </p>
+      {/* Referral link */}
+      <div>
+        <label className="text-sm font-medium text-foreground block mb-1.5">Tu link de referido</label>
+        <div className="flex items-center gap-2">
+          <input value={referral.referral_link} readOnly
+            className="flex-1 px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none truncate" />
+          <button
+            onClick={() => { navigator.clipboard.writeText(referral.referral_link); toast.success("Link copiado!"); }}
+            className="px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-all shrink-0"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Comparte este link. Ganas 15 créditos por cada registro. Los referidos obtienen 10% de descuento en planes mensuales.
+        </p>
+      </div>
+
+      {/* Referral list */}
+      {referral.referrals.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+            <Users className="w-3.5 h-3.5 text-muted-foreground" />
+            Tus referidos ({referral.total_referrals})
+          </h4>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-thin">
+            {referral.referrals.map((r, i) => (
+              <div key={i} className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-sm text-foreground">{r.name}</p>
+                  <p className="text-xs text-muted-foreground">{r.email}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-emerald-400 font-medium">+15 cr</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(r.joined_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Change Password Card                                                       */
+/* ═══════════════════════════════════════════════════════════════════════════ */
 
 function ChangePasswordCard() {
   const [show, setShow] = useState(false);
@@ -151,6 +176,11 @@ function ChangePasswordCard() {
     </div>
   );
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Two Factor Card                                                            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
 
 function TwoFactorCard() {
   const { data: user } = useMe();
@@ -278,6 +308,11 @@ function TwoFactorCard() {
   );
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Settings Page                                                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const { data: user } = useMe();
@@ -289,7 +324,6 @@ export default function SettingsPage() {
 
   const [orgForm, setOrgForm] = useState({ name: "", slug: "", timezone: "" });
 
-  // Sync form when org loads
   const syncOrgForm = () => {
     if (org && !orgForm.name) {
       setOrgForm({ name: org.name, slug: org.slug, timezone: org.timezone });
@@ -301,7 +335,7 @@ export default function SettingsPage() {
     <div className="flex flex-col h-full">
       <Header title="Configuración" subtitle="Gestiona tu cuenta y preferencias" />
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-y-auto">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Tabs */}
           <div className="space-y-1">
@@ -318,6 +352,8 @@ export default function SettingsPage() {
 
           {/* Content */}
           <div className="lg:col-span-3 space-y-6">
+
+            {/* ── Profile Tab ── */}
             {activeTab === "profile" && (
               <div className="space-y-6 animate-fade-in">
                 <div className="bg-card border border-border rounded-xl p-6 space-y-4">
@@ -344,6 +380,7 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* ── Organization Tab ── */}
             {activeTab === "organization" && (
               <div className="space-y-6 animate-fade-in">
                 <div className="bg-card border border-border rounded-xl p-6 space-y-4">
@@ -374,6 +411,7 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* ── Billing Tab ── */}
             {activeTab === "billing" && (
               <div className="space-y-6 animate-fade-in">
                 <CreditUsage />
@@ -424,6 +462,7 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* ── Security Tab ── */}
             {activeTab === "security" && (
               <div className="space-y-6 animate-fade-in">
                 <ChangePasswordCard />
@@ -438,6 +477,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+
           </div>
         </div>
       </div>

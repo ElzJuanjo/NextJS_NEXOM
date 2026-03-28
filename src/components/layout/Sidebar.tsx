@@ -6,8 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import anime from "animejs";
 import {
   LayoutDashboard, GitBranch, Palette, Layout as LayoutIcon, ImageIcon,
-  Settings, ChevronLeft, Menu, X, Zap,
-  Bell, HelpCircle, LogOut, Package, Workflow,
+  Settings, ChevronLeft, Menu, X, Zap, HelpCircle, LogOut, Package, Workflow, Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMe, useLogout } from "@/hooks/use-auth";
@@ -21,6 +20,7 @@ const navItems = [
   { label: "Creativo", href: "/creative", icon: ImageIcon, color: "text-cyan-400", activeBg: "bg-cyan-400/10" },
   { label: "Productos", href: "/products", icon: Package, color: "text-emerald-400", activeBg: "bg-emerald-400/10" },
   { label: "Flows", href: "/flows", icon: Workflow, color: "text-blue-400", activeBg: "bg-blue-400/10" },
+  { label: "Actividad", href: "/activity", icon: Activity, color: "text-amber-400", activeBg: "bg-amber-400/10" },
   { label: "sep", href: "", icon: null },
   { label: "Configuración", href: "/settings", icon: Settings, color: "text-muted-foreground", activeBg: "bg-accent" },
 ];
@@ -81,10 +81,6 @@ function NavContent({
       </nav>
 
       <div className="px-2 py-3 border-t border-border space-y-1 shrink-0">
-        <button className="flex items-center gap-3 px-2 py-2 rounded-lg transition-all w-full text-muted-foreground hover:text-foreground hover:bg-accent">
-          <Bell className="w-4 h-4 shrink-0" />
-          {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">Notificaciones</span>}
-        </button>
         <button className="flex items-center gap-3 px-2 py-2 rounded-lg transition-all w-full text-muted-foreground hover:text-foreground hover:bg-accent">
           <HelpCircle className="w-4 h-4 shrink-0" />
           {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">Ayuda</span>}
