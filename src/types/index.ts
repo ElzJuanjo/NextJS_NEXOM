@@ -280,7 +280,8 @@ export interface LandingSectionResponse {
 
 export interface LandingPageResponse {
   id: string;
-  brand_id: string;
+  organization_id: string;
+  brand_id: string | null;
   name: string;
   campaign: string | null;
   status: string;
