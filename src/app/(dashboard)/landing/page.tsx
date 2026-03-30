@@ -217,16 +217,35 @@ export default function LandingPage() {
     setShowPreview(true);
   };
 
-  const handleExportHTML = async (lpId: string) => {
+  const handleExport = async (lpId: string, format: "html" | "shopify" | "wordpress") => {
     try {
       const { landingService } = await import("@/services/landing.service");
-      const html = await landingService.renderHTML(lpId);
-      const blob = new Blob([html], { type: "text/html" });
+      const lp = pages?.find((p) => p.id === lpId);
+      const baseName = (lp?.name || "landing").replace(/\s+/g, "-").toLowerCase();
+
+      let content: string;
+      let ext: string;
+      let mimeType: string;
+
+      if (format === "shopify") {
+        content = await landingService.exportShopify(lpId);
+        ext = "liquid";
+        mimeType = "text/plain";
+      } else if (format === "wordpress") {
+        content = await landingService.exportWordPress(lpId);
+        ext = "html";
+        mimeType = "text/html";
+      } else {
+        content = await landingService.renderHTML(lpId);
+        ext = "html";
+        mimeType = "text/html";
+      }
+
+      const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const lp = pages?.find((p) => p.id === lpId);
-      a.download = `${(lp?.name || "landing").replace(/\s+/g, "-").toLowerCase()}.html`;
+      a.download = `${baseName}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -339,10 +358,25 @@ export default function LandingPage() {
                         className="p-1.5 rounded-md hover:bg-blue-400/10 transition-colors" title="Preview">
                         <Eye className="w-3.5 h-3.5 text-blue-400" />
                       </button>
-                      <button onClick={() => handleExportHTML(lp.id)}
-                        className="p-1.5 rounded-md hover:bg-emerald-400/10 transition-colors" title="Export HTML">
-                        <Download className="w-3.5 h-3.5 text-emerald-400" />
-                      </button>
+                      <div className="relative group/export">
+                        <button className="p-1.5 rounded-md hover:bg-emerald-400/10 transition-colors" title="Export">
+                          <Download className="w-3.5 h-3.5 text-emerald-400" />
+                        </button>
+                        <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-lg shadow-xl py-1 opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-all z-50 min-w-[160px]">
+                          <button onClick={() => handleExport(lp.id, "html")}
+                            className="w-full px-3 py-2 text-left text-xs hover:bg-accent transition-colors flex items-center gap-2">
+                            <Code className="w-3 h-3 text-blue-400" /> HTML estático
+                          </button>
+                          <button onClick={() => handleExport(lp.id, "shopify")}
+                            className="w-full px-3 py-2 text-left text-xs hover:bg-accent transition-colors flex items-center gap-2">
+                            <span className="w-3 h-3 text-[10px] leading-none">🛒</span> Shopify Liquid
+                          </button>
+                          <button onClick={() => handleExport(lp.id, "wordpress")}
+                            className="w-full px-3 py-2 text-left text-xs hover:bg-accent transition-colors flex items-center gap-2">
+                            <span className="w-3 h-3 text-[10px] leading-none">📝</span> WordPress
+                          </button>
+                        </div>
+                      </div>
                       <button onClick={() => { if (confirm("¿Eliminar esta landing page?")) deleteLanding.mutate(lp.id); }}
                         className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors" title="Delete">
                         <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
@@ -449,10 +483,25 @@ export default function LandingPage() {
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 bg-blue-400/10 border border-blue-400/20 hover:bg-blue-400/20 transition-colors">
                           <Eye className="w-3 h-3" /> Preview
                         </button>
-                        <button onClick={() => handleExportHTML(lp.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 hover:bg-emerald-400/20 transition-colors">
-                          <Code className="w-3 h-3" /> Export HTML
-                        </button>
+                        <div className="relative group/exp2">
+                          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 hover:bg-emerald-400/20 transition-colors">
+                            <Download className="w-3 h-3" /> Exportar
+                          </button>
+                          <div className="absolute left-0 bottom-full mb-1 bg-popover border border-border rounded-lg shadow-xl py-1 opacity-0 invisible group-hover/exp2:opacity-100 group-hover/exp2:visible transition-all z-50 min-w-[160px]">
+                            <button onClick={() => handleExport(lp.id, "html")}
+                              className="w-full px-3 py-2 text-left text-xs hover:bg-accent transition-colors flex items-center gap-2">
+                              <Code className="w-3 h-3 text-blue-400" /> HTML estático
+                            </button>
+                            <button onClick={() => handleExport(lp.id, "shopify")}
+                              className="w-full px-3 py-2 text-left text-xs hover:bg-accent transition-colors flex items-center gap-2">
+                              <span className="text-[10px]">🛒</span> Shopify Liquid
+                            </button>
+                            <button onClick={() => handleExport(lp.id, "wordpress")}
+                              className="w-full px-3 py-2 text-left text-xs hover:bg-accent transition-colors flex items-center gap-2">
+                              <span className="text-[10px]">📝</span> WordPress
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

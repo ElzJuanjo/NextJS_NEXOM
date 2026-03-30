@@ -94,4 +94,24 @@ export const landingService = {
     if (!res.ok) throw new Error(`Render failed: ${res.status}`);
     return res.text();
   },
+
+  async exportShopify(lpId: string): Promise<string> {
+    const token = getAccessToken();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${BASE}/${lpId}/export/shopify`,
+      { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
+    );
+    if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+    return res.text();
+  },
+
+  async exportWordPress(lpId: string): Promise<string> {
+    const token = getAccessToken();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${BASE}/${lpId}/export/wordpress`,
+      { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
+    );
+    if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+    return res.text();
+  },
 };
