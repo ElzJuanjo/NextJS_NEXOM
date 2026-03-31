@@ -1,26 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { Palette, Plus, Edit3, Trash2, Type } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Palette, Plus, Edit3, Trash2, Type, Eye, LayoutTemplate } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
-import { useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand } from "@/hooks/use-brands";
+import {
+  useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand,
+  useBrandTemplates, useCreateBrandFromTemplate,
+} from "@/hooks/use-brands";
 import type { BrandResponse } from "@/types";
+import type { BrandTemplate } from "@/services/brand.service";
 
 const DEFAULT_COLORS = { primary: "#6D28D9", secondary: "#1E1B4B", accent: "#A78BFA", background: "#ffffff", text: "#111827" };
 const DEFAULT_TYPO = { heading_font: "Plus Jakarta Sans", body_font: "Inter" };
 
 export default function BrandingPage() {
+  const router = useRouter();
   const { data: brands, isLoading } = useBrands();
   const createBrand = useCreateBrand();
   const updateBrand = useUpdateBrand();
   const deleteBrand = useDeleteBrand();
+  const { data: templates } = useBrandTemplates();
+  const createFromTemplate = useCreateBrandFromTemplate();
 
   const [showForm, setShowForm] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [editing, setEditing] = useState<BrandResponse | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -45,7 +54,8 @@ export default function BrandingPage() {
     setShowForm(true);
   };
 
-  const openEdit = (b: BrandResponse) => {
+  const openEdit = (b: BrandResponse, e: React.MouseEvent) => {
+    e.stopPropagation();
     const cp = (b.color_palette || {}) as Record<string, string>;
     const tp = (b.typography || {}) as Record<string, string>;
     setEditing(b);
@@ -82,6 +92,10 @@ export default function BrandingPage() {
     }
   };
 
+  const handleTemplateSelect = (t: BrandTemplate) => {
+    createFromTemplate.mutate(t.id, { onSuccess: () => setShowTemplates(false) });
+  };
+
   const colorField = (label: string, key: "primary" | "secondary" | "accent" | "background" | "text") => (
     <div className="flex items-center gap-2">
       <input type="color" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })}
@@ -99,6 +113,14 @@ export default function BrandingPage() {
       <Header title="Gestión de Marca" subtitle="Identidad de marca e IA de branding" action={{ label: "Nueva marca", onClick: openCreate }} />
 
       <div className="flex-1 p-6">
+        {/* Action buttons */}
+        <div className="flex gap-2 mb-6">
+          <button onClick={() => setShowTemplates(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-all">
+            <LayoutTemplate className="w-3.5 h-3.5" /> Desde template
+          </button>
+        </div>
+
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
@@ -110,11 +132,23 @@ export default function BrandingPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {brands.map((brand) => (
-              <div key={brand.id} className="bg-card border border-border rounded-xl p-5 space-y-3 group animate-fade-in">
+              <div key={brand.id}
+                onClick={() => router.push(`/branding/${brand.id}`)}
+                className="bg-card border border-border rounded-xl p-5 space-y-3 group animate-fade-in cursor-pointer hover:border-ring/50 transition-all">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">{brand.name}</h3>
-                    {brand.tagline && <p className="text-xs text-muted-foreground mt-0.5">{brand.tagline}</p>}
+                  <div className="flex items-center gap-3">
+                    {/* Logo placeholder */}
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+                      style={{
+                        backgroundColor: brand.color_palette?.primary || "#6D28D9",
+                        color: "#fff",
+                      }}>
+                      {brand.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">{brand.name}</h3>
+                      {brand.tagline && <p className="text-xs text-muted-foreground mt-0.5">{brand.tagline}</p>}
+                    </div>
                   </div>
                   <StatusBadge status={brand.status} />
                 </div>
@@ -143,19 +177,29 @@ export default function BrandingPage() {
 
                 {brand.tones && brand.tones.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {brand.tones.map((tone) => (
+                    {brand.tones.slice(0, 4).map((tone) => (
                       <span key={tone} className="text-xs px-2 py-0.5 rounded-full bg-pink-400/10 text-pink-400 border border-pink-400/20">
                         {tone}
                       </span>
                     ))}
+                    {brand.tones.length > 4 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                        +{brand.tones.length - 4}
+                      </span>
+                    )}
                   </div>
                 )}
 
                 <div className="flex items-center gap-2 pt-2 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEdit(brand)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); router.push(`/branding/${brand.id}`); }}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <Eye className="w-3 h-3" /> Ver
+                  </button>
+                  <button onClick={(e) => openEdit(brand, e)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
                     <Edit3 className="w-3 h-3" /> Editar
                   </button>
-                  <button onClick={() => { if (confirm("¿Eliminar marca?")) deleteBrand.mutate(brand.id); }}
+                  <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar marca?")) deleteBrand.mutate(brand.id); }}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
                     <Trash2 className="w-3 h-3" /> Eliminar
                   </button>
@@ -166,6 +210,7 @@ export default function BrandingPage() {
         )}
       </div>
 
+      {/* Create/Edit Brand Modal */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? "Editar marca" : "Nueva marca"}>
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div>
@@ -179,7 +224,6 @@ export default function BrandingPage() {
               className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
           </div>
 
-          {/* Color Palette */}
           <div>
             <label className="text-sm font-medium text-foreground block mb-2">Paleta de colores</label>
             <div className="grid grid-cols-2 gap-3">
@@ -191,7 +235,6 @@ export default function BrandingPage() {
             </div>
           </div>
 
-          {/* Typography */}
           <div>
             <label className="text-sm font-medium text-foreground block mb-2">Tipografía</label>
             <div className="grid grid-cols-2 gap-3">
@@ -232,6 +275,39 @@ export default function BrandingPage() {
             {(createBrand.isPending || updateBrand.isPending) ? <Spinner className="w-4 h-4 text-primary-foreground" /> : editing ? "Guardar cambios" : "Crear marca"}
           </button>
         </form>
+      </Modal>
+
+      {/* Templates Modal */}
+      <Modal open={showTemplates} onClose={() => setShowTemplates(false)} title="Templates de Marca" className="max-w-lg">
+        <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
+          {templates?.map((t) => (
+            <button key={t.id} onClick={() => handleTemplateSelect(t)}
+              disabled={createFromTemplate.isPending}
+              className="w-full text-left bg-secondary border border-border rounded-xl p-4 hover:border-ring/50 transition-all disabled:opacity-60 group">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">{t.name}</h4>
+                  <p className="text-xs text-muted-foreground">{t.industry}</p>
+                </div>
+                <div className="flex gap-1">
+                  {Object.values(t.color_palette).slice(0, 4).map((color, i) => (
+                    <div key={i} className="w-5 h-5 rounded-md border border-border" style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {t.tones.slice(0, 3).map((tone) => (
+                  <span key={tone} className="text-[10px] px-1.5 py-0.5 rounded-full bg-pink-400/10 text-pink-400 border border-pink-400/20">
+                    {tone}
+                  </span>
+                ))}
+              </div>
+            </button>
+          ))}
+          {!templates?.length && (
+            <p className="text-sm text-muted-foreground text-center py-8">No hay templates disponibles.</p>
+          )}
+        </div>
       </Modal>
     </div>
   );

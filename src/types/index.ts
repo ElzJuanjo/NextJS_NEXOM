@@ -99,6 +99,7 @@ export interface BrandResponse {
   typography: Record<string, string> | null;
   tones: string[] | null;
   key_messages: string[] | null;
+  brand_identity: Record<string, any> | null;
   created_at: string;
 }
 
