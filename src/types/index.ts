@@ -330,6 +330,24 @@ export interface AgentMeta {
   activeBg: string;
 }
 
+// ── Copy Assets ────────────────────────────────────────────────────────────
+
+export interface CopyAssetResponse {
+  id: string;
+  organization_id: string;
+  brand_id: string | null;
+  product_id: string | null;
+  name: string;
+  copy_type: string;
+  platform: string | null;
+  tone: string | null;
+  content: string;
+  status: string;
+  variations: Array<{ content: string; order: number }> | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Conversations ───────────────────────────────────────────────────────────
 
 export interface ConversationMessageResponse {

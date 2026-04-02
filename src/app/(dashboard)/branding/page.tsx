@@ -189,20 +189,37 @@ export default function BrandingPage() {
                     )}
                   </div>
                 )}
-
-                <div className="flex items-center gap-2 pt-2 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); router.push(`/branding/${brand.id}`); }}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    <Eye className="w-3 h-3" /> Ver
-                  </button>
-                  <button onClick={(e) => openEdit(brand, e)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    <Edit3 className="w-3 h-3" /> Editar
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar marca?")) deleteBrand.mutate(brand.id); }}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
-                    <Trash2 className="w-3 h-3" /> Eliminar
-                  </button>
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">Estado:</span>
+                    <select
+                      value={brand.status}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        updateBrand.mutate({ id: brand.id, status: e.target.value });
+                      }}
+                      className="px-2 py-1 rounded-md bg-secondary border border-border text-[11px] text-foreground outline-none focus:border-ring transition-all cursor-pointer"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={(e) => { e.stopPropagation(); router.push(`/branding/${brand.id}`); }}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <Eye className="w-3 h-3" /> Ver
+                    </button>
+                    <button onClick={(e) => openEdit(brand, e)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <Edit3 className="w-3 h-3" /> Editar
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar marca?")) deleteBrand.mutate(brand.id); }}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
+                      <Trash2 className="w-3 h-3" /> Eliminar
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

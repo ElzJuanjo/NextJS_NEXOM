@@ -387,29 +387,46 @@ export default function LandingPage() {
                   {/* Sections detail */}
                   {isExpanded && (
                     <div className="px-5 pb-4 pt-1 border-t border-border space-y-2">
-                      {/* Brand assignment */}
-                      <div className="flex items-center gap-3 py-2">
-                        <span className="text-xs text-muted-foreground shrink-0">Marca:</span>
-                        <select
-                          value={lp.brand_id || ""}
-                          onChange={(e) => {
-                            const val = e.target.value || null;
-                            updateLanding.mutate({ lpId: lp.id, body: { brand_id: val } });
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs text-foreground outline-none focus:border-ring transition-all"
-                        >
-                          <option value="">Sin marca</option>
-                          {brands?.map((b) => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                          ))}
-                        </select>
-                        {lp.brand_id && brands?.find((b) => b.id === lp.brand_id)?.color_palette && (
-                          <div className="flex items-center gap-1">
-                            {Object.values(brands.find((b) => b.id === lp.brand_id)?.color_palette || {}).filter(Boolean).slice(0, 3).map((color, i) => (
-                              <div key={i} className="w-3.5 h-3.5 rounded-full border border-border" style={{ background: color as string }} />
+                      {/* Brand assignment + Status */}
+                      <div className="flex items-center gap-4 py-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground shrink-0">Marca:</span>
+                          <select
+                            value={lp.brand_id || ""}
+                            onChange={(e) => {
+                              const val = e.target.value || null;
+                              updateLanding.mutate({ lpId: lp.id, body: { brand_id: val } });
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs text-foreground outline-none focus:border-ring transition-all"
+                          >
+                            <option value="">Sin marca</option>
+                            {brands?.map((b) => (
+                              <option key={b.id} value={b.id}>{b.name}</option>
                             ))}
-                          </div>
-                        )}
+                          </select>
+                          {lp.brand_id && brands?.find((b) => b.id === lp.brand_id)?.color_palette && (
+                            <div className="flex items-center gap-1">
+                              {Object.values(brands.find((b) => b.id === lp.brand_id)?.color_palette || {}).filter(Boolean).slice(0, 3).map((color, i) => (
+                                <div key={i} className="w-3.5 h-3.5 rounded-full border border-border" style={{ background: color as string }} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Status selector */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground shrink-0">Estado:</span>
+                          <select
+                            value={lp.status}
+                            onChange={(e) => updateLanding.mutate({ lpId: lp.id, body: { status: e.target.value } })}
+                            className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs text-foreground outline-none focus:border-ring transition-all"
+                          >
+                            <option value="draft">Draft</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </div>
                       </div>
 
                       {sortedSections.length === 0 ? (

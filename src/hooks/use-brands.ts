@@ -61,12 +61,25 @@ export function useUpdateBrand() {
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Parameters<typeof brandService.update>[1]) =>
       brandService.update(id, body),
-    onSuccess: (_, variables) => {
+    onMutate: async ({ id, ...body }) => {
+      await qc.cancelQueries({ queryKey: brandKeys.list });
+      const previous = qc.getQueryData<any[]>(brandKeys.list);
+      qc.setQueryData<any[]>(brandKeys.list, (old) =>
+        old?.map((b) => (b.id === id ? { ...b, ...body } : b)),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) qc.setQueryData(brandKeys.list, context.previous);
+      toast.error("Error al actualizar");
+    },
+    onSettled: (_, __, variables) => {
       qc.invalidateQueries({ queryKey: brandKeys.list });
       qc.invalidateQueries({ queryKey: brandKeys.detail(variables.id) });
+    },
+    onSuccess: () => {
       toast.success("Marca actualizada");
     },
-    onError: (err: Error) => toast.error(err.message),
   });
 }
 

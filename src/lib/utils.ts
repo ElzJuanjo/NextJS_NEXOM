@@ -49,6 +49,8 @@ export function getStatusBadge(status: string): string {
     approved: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
     published: "text-violet-400 bg-violet-400/10 border-violet-400/20",
     partial: "text-amber-400 bg-amber-400/10 border-amber-400/20",
+    rejected: "text-red-400 bg-red-400/10 border-red-400/20",
+    pending: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
   };
   return map[status] ?? "text-muted-foreground bg-muted border-border";
 }
