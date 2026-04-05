@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Plus, Edit3, Trash2, DollarSign, ImageOff, Check, ImageIcon } from "lucide-react";
+import {
+  Package, Plus, Edit3, Trash2, DollarSign, ImageOff, Check, ImageIcon,
+  Trophy, TrendingUp, Star, ExternalLink, BarChart3, ShoppingCart,
+  Eye,
+} from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
 import { Modal } from "@/components/ui/Modal";
@@ -12,6 +16,129 @@ import { useBrands } from "@/hooks/use-brands";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { ProductResponse } from "@/types";
 import { useCreatives } from "@/hooks/use-creatives";
+
+// ── Types para extra_data de productos auto-persistidos ────────────────────
+
+interface ProductScoreBreakdown {
+  ventas: number;
+  margen: number;
+  tendencia: number;
+  competencia_inv: number;
+  rating: number;
+}
+
+interface AutoPersistedData {
+  auto_persisted: true;
+  source: string;
+  score_total: number;
+  score_breakdown: ProductScoreBreakdown;
+  source_platform: string;
+  source_url: string;
+  rating: number;
+  monthly_sales: number;
+  seller: string;
+  reviews_count: number;
+  currency: string;
+}
+
+function isAutoPersisted(product: ProductResponse): product is ProductResponse & { extra_data: AutoPersistedData } {
+  return product.extra_data?.auto_persisted === true;
+}
+
+// ── Filter type ────────────────────────────────────────────────────────────
+
+type ProductFilter = "all" | "winners" | "manual";
+
+// ── Score ring component ───────────────────────────────────────────────────
+
+function ScoreRing({ score, size = 40 }: { score: number; size?: number }) {
+  const radius = (size - 6) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+
+  const color =
+    score >= 75 ? "text-emerald-400" :
+      score >= 50 ? "text-amber-400" :
+        "text-red-400";
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" strokeWidth={3}
+          className="stroke-border"
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" strokeWidth={3}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className={cn("transition-all duration-700", color.replace("text-", "stroke-"))}
+        />
+      </svg>
+      <span className={cn(
+        "absolute inset-0 flex items-center justify-center text-[10px] font-bold",
+        color
+      )}>
+        {Math.round(score)}
+      </span>
+    </div>
+  );
+}
+
+// ── Score breakdown mini-bar ────────────────────────────────────────────────
+
+function ScoreBreakdownBar({ breakdown }: { breakdown: ProductScoreBreakdown }) {
+  const items = [
+    { label: "Ventas", value: breakdown.ventas, color: "bg-emerald-400" },
+    { label: "Margen", value: breakdown.margen, color: "bg-blue-400" },
+    { label: "Tendencia", value: breakdown.tendencia, color: "bg-violet-400" },
+    { label: "Comp.", value: breakdown.competencia_inv, color: "bg-amber-400" },
+    { label: "Rating", value: breakdown.rating, color: "bg-pink-400" },
+  ];
+
+  return (
+    <div className="space-y-1">
+      {items.map((item) => (
+        <div key={item.label} className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground w-14 shrink-0 text-right">{item.label}</span>
+          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className={cn("h-full rounded-full transition-all duration-500", item.color)}
+              style={{ width: `${item.value}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-muted-foreground w-6 shrink-0">{Math.round(item.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Platform badge ─────────────────────────────────────────────────────────
+
+function PlatformBadge({ platform }: { platform: string }) {
+  const platformLabels: Record<string, { label: string; color: string }> = {
+    mercadolibre: { label: "MercadoLibre", color: "text-yellow-500 bg-yellow-500/10 border-yellow-500/20" },
+    google_shopping: { label: "Google Shopping", color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+    aliexpress: { label: "AliExpress", color: "text-orange-400 bg-orange-400/10 border-orange-400/20" },
+    amazon: { label: "Amazon", color: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+    temu: { label: "Temu", color: "text-rose-400 bg-rose-400/10 border-rose-400/20" },
+    shopee: { label: "Shopee", color: "text-orange-500 bg-orange-500/10 border-orange-500/20" },
+  };
+
+  const info = platformLabels[platform] || { label: platform, color: "text-muted-foreground bg-muted border-border" };
+
+  return (
+    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full border font-medium", info.color)}>
+      {info.label}
+    </span>
+  );
+}
+
+// ── Creative Picker (unchanged from original) ──────────────────────────────
 
 function CreativePickerField({
   productId,
@@ -83,6 +210,168 @@ function CreativePickerField({
   );
 }
 
+// ── Product Detail Modal ───────────────────────────────────────────────────
+
+function ProductDetailModal({
+  product,
+  brand,
+  open,
+  onClose,
+  onToggleActive,
+}: {
+  product: ProductResponse | null;
+  brand?: { name: string; color_palette?: Record<string, string> | null } | null;
+  open: boolean;
+  onClose: () => void;
+  onToggleActive?: (id: string, isActive: boolean) => void;
+}) {
+  if (!product) return null;
+
+  const auto = isAutoPersisted(product) ? product.extra_data as AutoPersistedData : null;
+
+  return (
+    <Modal open={open} onClose={onClose} title={product.name} className="max-w-lg">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        {/* Image */}
+        {product.image_url && (
+          <div className="w-full h-48 rounded-xl overflow-hidden bg-muted">
+            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        {/* Basic info */}
+        <div className="flex items-center justify-between">
+          <div>
+            {brand && (
+              <span className="text-xs text-pink-400 font-medium">{brand.name}</span>
+            )}
+            {product.description && (
+              <p className="text-sm text-muted-foreground mt-1">{product.description}</p>
+            )}
+          </div>
+          {product.price_usd && (
+            <span className="text-lg font-bold text-foreground">
+              {formatCurrency(product.price_usd)}
+            </span>
+          )}
+        </div>
+
+        {/* Winner scoring section */}
+        {auto && (
+          <div className="bg-secondary/50 border border-border rounded-xl p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-semibold text-foreground">Producto ganador</span>
+              </div>
+              <ScoreRing score={auto.score_total} size={48} />
+            </div>
+
+            {/* Score breakdown */}
+            <ScoreBreakdownBar breakdown={auto.score_breakdown} />
+
+            {/* Metrics row */}
+            <div className="grid grid-cols-3 gap-3">
+              {auto.rating > 0 && (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Star className="w-3 h-3 text-amber-400" />
+                    <span className="text-sm font-semibold text-foreground">{auto.rating.toFixed(1)}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Rating</span>
+                </div>
+              )}
+              {auto.monthly_sales > 0 && (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <TrendingUp className="w-3 h-3 text-emerald-400" />
+                    <span className="text-sm font-semibold text-foreground">{Math.round(auto.monthly_sales)}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Ventas/mes</span>
+                </div>
+              )}
+              {auto.reviews_count > 0 && (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <ShoppingCart className="w-3 h-3 text-blue-400" />
+                    <span className="text-sm font-semibold text-foreground">{auto.reviews_count}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Reviews</span>
+                </div>
+              )}
+            </div>
+
+            {/* Source info */}
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <div className="flex items-center gap-2">
+                <PlatformBadge platform={auto.source_platform} />
+                {auto.seller && (
+                  <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                    Seller: {auto.seller}
+                  </span>
+                )}
+              </div>
+              {auto.source_url && auto.source_url.startsWith("http") ? (
+                <a
+                  href={auto.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Ver fuente
+                </a>
+              ) : auto.source_url ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(auto.source_url);
+                  }}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  title="Copiar URL de fuente"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Copiar URL
+                </button>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {/* Metadata */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-3">
+            {product.sku && <span>SKU: {product.sku}</span>}
+            {product.dropi_product_id && <span>Dropi: {product.dropi_product_id}</span>}
+          </div>
+          <button
+            onClick={() => onToggleActive?.(product.id, !product.is_active)}
+            className="flex items-center gap-2 group/toggle"
+          >
+            <span className={cn(
+              "text-xs font-medium transition-colors",
+              product.is_active ? "text-emerald-400" : "text-muted-foreground"
+            )}>
+              {product.is_active ? "Activo" : "Inactivo"}
+            </span>
+            <div className={cn(
+              "relative w-8 h-[18px] rounded-full transition-colors duration-200 cursor-pointer",
+              product.is_active ? "bg-emerald-400" : "bg-muted-foreground/30"
+            )}>
+              <span className={cn(
+                "absolute top-[3px] left-[3px] w-3 h-3 rounded-full bg-white transition-transform duration-200 shadow-sm",
+                product.is_active && "translate-x-3.5"
+              )} />
+            </div>
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────
+
 export default function ProductsPage() {
   const { data: products, isLoading } = useProducts();
   const { data: brands } = useBrands();
@@ -92,11 +381,14 @@ export default function ProductsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ProductResponse | null>(null);
+  const [viewing, setViewing] = useState<ProductResponse | null>(null);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<ProductFilter>("all");
   const [form, setForm] = useState({ name: "", brand_id: "", description: "", sku: "", price_usd: "", image_url: "" });
 
   const openCreate = () => { setEditing(null); setForm({ name: "", brand_id: "", description: "", sku: "", price_usd: "", image_url: "" }); setShowForm(true); };
-  const openEdit = (p: ProductResponse) => {
+  const openEdit = (p: ProductResponse, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setEditing(p);
     setForm({ name: p.name, brand_id: p.brand_id ?? "", description: p.description ?? "", sku: p.sku ?? "", price_usd: p.price_usd?.toString() ?? "", image_url: p.image_url ?? "" });
     setShowForm(true);
@@ -119,18 +411,77 @@ export default function ProductsPage() {
     }
   };
 
-  const filtered = products?.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())) ?? [];
+  // Filtering
+  const filtered = (products ?? []).filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+    if (filter === "winners") return isAutoPersisted(p);
+    if (filter === "manual") return !isAutoPersisted(p);
+    return true;
+  });
+
+  // Stats
+  const totalProducts = products?.length ?? 0;
+  const winnerCount = products?.filter(isAutoPersisted).length ?? 0;
+  const manualCount = totalProducts - winnerCount;
 
   return (
     <div className="flex flex-col h-full">
       <Header title="Productos" subtitle="Gestiona tu catálogo de productos" action={{ label: "Nuevo producto", onClick: openCreate }} />
 
       <div className="flex-1 p-6 space-y-4">
-        {products && products.length > 0 && (
-          <input
-            value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos..."
-            className="w-full max-w-sm px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
-          />
+        {/* Search + Filter bar */}
+        {totalProducts > 0 && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-2">
+            <input
+              value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos..."
+              className="w-full max-w-sm px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
+            />
+
+            {/* Filter pills */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setFilter("all")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                  filter === "all"
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "text-muted-foreground border-border hover:text-foreground hover:bg-accent"
+                )}
+              >
+                <Package className="w-3 h-3" />
+                Todos ({totalProducts})
+              </button>
+              {winnerCount > 0 && (
+                <button
+                  onClick={() => setFilter("winners")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                    filter === "winners"
+                      ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+                      : "text-muted-foreground border-border hover:text-foreground hover:bg-accent"
+                  )}
+                >
+                  <Trophy className="w-3 h-3" />
+                  Winners ({winnerCount})
+                </button>
+              )}
+              {manualCount > 0 && winnerCount > 0 && (
+                <button
+                  onClick={() => setFilter("manual")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                    filter === "manual"
+                      ? "bg-violet-400/10 text-violet-400 border-violet-400/30"
+                      : "text-muted-foreground border-border hover:text-foreground hover:bg-accent"
+                  )}
+                >
+                  <Plus className="w-3 h-3" />
+                  Manuales ({manualCount})
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         {isLoading ? (
@@ -140,30 +491,99 @@ export default function ProductsPage() {
         ) : !filtered.length ? (
           <EmptyState
             icon={Package}
-            title={search ? "Sin resultados" : "Sin productos aún"}
-            description={search ? "Intenta con otro término de búsqueda." : "Agrega tu primer producto o usa el agente de búsqueda para encontrar productos ganadores."}
-            action={!search ? { label: "Agregar producto", onClick: openCreate } : undefined}
+            title={search || filter !== "all" ? "Sin resultados" : "Sin productos aún"}
+            description={
+              search || filter !== "all"
+                ? "Intenta con otro término de búsqueda o cambia el filtro."
+                : "Agrega tu primer producto o usa el agente de búsqueda para encontrar productos ganadores."
+            }
+            action={!search && filter === "all" ? { label: "Agregar producto", onClick: openCreate } : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((product) => {
               const brand = brands?.find((b) => b.id === product.brand_id);
+              const auto = isAutoPersisted(product) ? product.extra_data as AutoPersistedData : null;
+
               return (
-                <div key={product.id} className="bg-card border border-border rounded-xl overflow-hidden group animate-fade-in">
-                  <div className="h-36 bg-muted flex items-center justify-center">
+                <div
+                  key={product.id}
+                  onClick={() => setViewing(product)}
+                  className="bg-card border border-border rounded-xl overflow-hidden group animate-fade-in cursor-pointer hover:border-ring/50 transition-all"
+                >
+                  {/* Image */}
+                  <div className="h-36 bg-muted flex items-center justify-center relative">
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
                       <ImageOff className="w-8 h-8 text-muted-foreground/30" />
                     )}
+
+                    {/* Winner badge overlay */}
+                    {auto && (
+                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm">
+                        <Trophy className="w-3 h-3 text-emerald-400" />
+                        <span className="text-[10px] font-bold text-emerald-400">{Math.round(auto.score_total)}</span>
+                      </div>
+                    )}
+
+                    {/* Platform badge */}
+                    {auto?.source_platform && (
+                      <div className="absolute top-2 right-2">
+                        <PlatformBadge platform={auto.source_platform} />
+                      </div>
+                    )}
                   </div>
+
+                  {/* Content */}
                   <div className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-sm font-semibold text-foreground line-clamp-1">{product.name}</h3>
-                      <span className={cn("w-2 h-2 rounded-full shrink-0 mt-1.5", product.is_active ? "bg-emerald-400" : "bg-muted-foreground")} />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateProduct.mutate({ id: product.id, is_active: !product.is_active });
+                        }}
+                        className={cn(
+                          "relative shrink-0 mt-0.5 w-7 h-4 rounded-full transition-colors duration-200",
+                          product.is_active ? "bg-emerald-400" : "bg-muted-foreground/30"
+                        )}
+                        title={product.is_active ? "Activo — click para desactivar" : "Inactivo — click para activar"}
+                      >
+                        <span className={cn(
+                          "absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 shadow-sm",
+                          product.is_active && "translate-x-3"
+                        )} />
+                      </button>
                     </div>
                     {brand && <p className="text-xs text-pink-400">{brand.name}</p>}
                     {product.description && <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>}
+
+                    {/* Winner metrics row */}
+                    {auto && (
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        {auto.rating > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 text-amber-400" />
+                            {auto.rating.toFixed(1)}
+                          </span>
+                        )}
+                        {auto.monthly_sales > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            <TrendingUp className="w-2.5 h-2.5 text-emerald-400" />
+                            {Math.round(auto.monthly_sales)} ventas
+                          </span>
+                        )}
+                        {auto.reviews_count > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            <BarChart3 className="w-2.5 h-2.5 text-blue-400" />
+                            {auto.reviews_count} reviews
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Footer */}
                     <div className="flex items-center justify-between pt-2 border-t border-border">
                       {product.price_usd ? (
                         <span className="text-sm font-semibold text-foreground flex items-center gap-1">
@@ -171,8 +591,19 @@ export default function ProductsPage() {
                         </span>
                       ) : <span className="text-xs text-muted-foreground">Sin precio</span>}
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(product)} className="p-1.5 rounded-md hover:bg-accent transition-colors"><Edit3 className="w-3 h-3 text-muted-foreground" /></button>
-                        <button onClick={() => { if (confirm("¿Eliminar?")) deleteProduct.mutate(product.id); }} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"><Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" /></button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setViewing(product); }}
+                          className="p-1.5 rounded-md hover:bg-accent transition-colors"
+                          title="Ver detalle"
+                        >
+                          <Eye className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                        <button onClick={(e) => openEdit(product, e)} className="p-1.5 rounded-md hover:bg-accent transition-colors">
+                          <Edit3 className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar?")) deleteProduct.mutate(product.id); }} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors">
+                          <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -183,6 +614,21 @@ export default function ProductsPage() {
         )}
       </div>
 
+      {/* Detail Modal */}
+      <ProductDetailModal
+        product={viewing}
+        brand={viewing ? brands?.find((b) => b.id === viewing.brand_id) : null}
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        onToggleActive={(id, isActive) => {
+          updateProduct.mutate({ id, is_active: isActive });
+          if (viewing && viewing.id === id) {
+            setViewing({ ...viewing, is_active: isActive });
+          }
+        }}
+      />
+
+      {/* Create/Edit Modal */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? "Editar producto" : "Nuevo producto"} className="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
