@@ -20,11 +20,6 @@ export const conversationService = {
     return data;
   },
 
-  async send(body: { content: string; conversation_id?: string; force_agent?: string }) {
-    const { data } = await apiClient.post<SendMessageResponse>(`${BASE}/send`, body);
-    return data;
-  },
-
   async update(conversationId: string, body: { title?: string; is_archived?: boolean }) {
     const { data } = await apiClient.patch<ConversationResponse>(`${BASE}/${conversationId}`, body);
     return data;

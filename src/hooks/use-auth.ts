@@ -21,13 +21,6 @@ export function useMe() {
   });
 }
 
-export function useReferral() {
-  return useQuery({
-    queryKey: authKeys.referral,
-    queryFn: () => authService.getReferralInfo(),
-  });
-}
-
 export function useLogin() {
   const qc = useQueryClient();
   const router = useRouter();

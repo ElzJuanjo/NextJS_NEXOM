@@ -24,18 +24,6 @@ export function useCreatives(productId?: string) {
   });
 }
 
-export function useCreateCreative() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: creativeService.create,
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: creativeKeys.list(vars.product_id) });
-      toast.success("Creativo generado");
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-}
-
 export function useDeleteCreative() {
   const qc = useQueryClient();
   return useMutation({

@@ -27,18 +27,6 @@ export function useConversation(id: string | null) {
     });
 }
 
-export function useSendMessage() {
-    const qc = useQueryClient();
-    return useMutation({
-        mutationFn: conversationService.send,
-        onSuccess: (data) => {
-            qc.invalidateQueries({ queryKey: ["conversations"] });
-            qc.invalidateQueries({ queryKey: orgKeys.usage });
-        },
-        onError: (err: Error) => toast.error(err.message),
-    });
-}
-
 export function useUpdateConversation() {
     const qc = useQueryClient();
     return useMutation({
