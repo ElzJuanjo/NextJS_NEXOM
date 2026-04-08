@@ -173,7 +173,7 @@ export function Sidebar() {
             </div>
             {sidebarOpen && (
               <span className="font-semibold text-sm tracking-tight text-foreground whitespace-nowrap animate-fade-in-left">
-                NexOS
+                NEXOM
               </span>
             )}
           </div>
@@ -187,7 +187,7 @@ export function Sidebar() {
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
-          <span className="font-semibold text-sm text-foreground">NexOS</span>
+          <span className="font-semibold text-sm text-foreground">NEXOM</span>
         </div>
         <button
           onClick={() => setMobileOpen(true)}
@@ -210,7 +210,7 @@ export function Sidebar() {
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
                   <Zap className="w-3.5 h-3.5 text-white" />
                 </div>
-                <span className="font-semibold text-sm text-foreground">NexOS</span>
+                <span className="font-semibold text-sm text-foreground">NEXOM</span>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}

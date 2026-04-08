@@ -215,7 +215,7 @@ export default function FlowsPage() {
               <div>
                 <label className="text-xs font-medium text-foreground block mb-1">Brand name</label>
                 <input value={contextForm.brand} onChange={(e) => setContextForm({ ...contextForm, brand: e.target.value })}
-                  placeholder="e.g. NexOS" disabled={flowRunning}
+                  placeholder="e.g. NEXOM" disabled={flowRunning}
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring transition-all disabled:opacity-50" />
               </div>
               <div>

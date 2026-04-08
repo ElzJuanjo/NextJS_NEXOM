@@ -37,7 +37,7 @@ export function CreateOrgModal({ open }: CreateOrgModalProps) {
   return (
     <Modal open={open} title="Crea tu organización" closable={false}>
       <p className="text-sm text-muted-foreground mb-4">
-        Necesitas una organización para comenzar a usar NexOS. Esta será tu workspace principal.
+        Necesitas una organización para comenzar a usar NEXOM. Esta será tu workspace principal.
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

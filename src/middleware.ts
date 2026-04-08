@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   // Check for access token cookie
-  const accessToken = request.cookies.get("nexos_at")?.value;
+  const accessToken = request.cookies.get("nexom_at")?.value;
   // Also check httpOnly refresh token presence
   const refreshToken = request.cookies.get("refresh_token")?.value;
 

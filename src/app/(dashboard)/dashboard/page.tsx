@@ -39,7 +39,7 @@ export default function DashboardPage() {
 
   const getResendRemaining = () => {
     if (typeof window === "undefined") return 0;
-    const lastSent = localStorage.getItem("nexos_resend_at");
+    const lastSent = localStorage.getItem("nexom_resend_at");
     if (!lastSent) return 0;
     const elapsed = Date.now() - parseInt(lastSent, 10);
     const remaining = RESEND_COOLDOWN_MS - elapsed;
@@ -122,7 +122,7 @@ export default function DashboardPage() {
             <button
               onClick={() => {
                 resendVerification.mutate(verificationStatus.email);
-                localStorage.setItem("nexos_resend_at", Date.now().toString());
+                localStorage.setItem("nexom_resend_at", Date.now().toString());
                 setResendCooldown(RESEND_COOLDOWN_MS / 1000);
               }}
               disabled={resendVerification.isPending || resendCooldown > 0}

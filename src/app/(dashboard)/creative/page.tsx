@@ -35,7 +35,7 @@ export default function CreativePage() {
   const { data: unassigned } = useUnassignedCreatives();
 
   const generateBatch = useGenerateBatch();
-  const { generate: generateBatchStream, progress: batchProgress, isPending: batchStreaming } = useGenerateBatchStream();
+  const { generate: generateBatchStream, progress: batchProgress, isPending: batchStreaming, promptPack } = useGenerateBatchStream();
   const deleteBatch = useDeleteBatch();
   const deleteCreative = useDeleteCreative();
   const assignProduct = useAssignProduct();
@@ -154,7 +154,7 @@ export default function CreativePage() {
                       </button>
                     </div>
 
-                    {/* Batch creatives grid */}
+                    {/* Batch creatives grid + prompt pack */}
                     {isExpanded && (
                       <div className="px-5 pb-4 pt-1 border-t border-border">
                         {!batch.creatives?.length ? (
@@ -172,6 +172,9 @@ export default function CreativePage() {
                             ))}
                           </div>
                         )}
+
+                        {/* ── Prompt Pack (persistent from batch.config) ── */}
+                        <BatchPromptPack config={batch.config} />
                       </div>
                     )}
                   </div>
@@ -222,6 +225,44 @@ export default function CreativePage() {
             </div>
           )
         )}
+        {/* ── Stream Prompt Pack (shown while generating, then persists in batch) ── */}
+        {promptPack.length > 0 && (
+          <div className="bg-card border border-violet-400/20 rounded-xl p-5 animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-violet-400" />
+                <h3 className="text-sm font-semibold text-foreground">Prompt Pack — recién generado</h3>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{promptPack.length} prompts</span>
+              </div>
+              <button onClick={() => {
+                const text = promptPack.map((p) => `[${p.type.toUpperCase()}] ${p.prompt}`).join("\n\n");
+                navigator.clipboard.writeText(text);
+              }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                📋 Copiar todos
+              </button>
+            </div>
+            <div className="space-y-2">
+              {promptPack.map((p, i) => (
+                <div key={i} className="group flex items-start gap-3 px-3 py-2.5 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                  <span className={cn("shrink-0 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded mt-0.5",
+                    p.type === "video" ? "bg-rose-400/10 text-rose-400" : "bg-cyan-400/10 text-cyan-400"
+                  )}>
+                    {p.type === "video" ? "🎬 Video" : "📸 Img"}
+                  </span>
+                  <p className="text-xs text-foreground/80 flex-1 leading-relaxed">{p.prompt}</p>
+                  <button onClick={() => navigator.clipboard.writeText(p.prompt)}
+                    className="opacity-0 group-hover:opacity-100 shrink-0 text-[10px] text-muted-foreground hover:text-foreground transition-all">
+                    📋
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-3">
+              Estos prompts se han guardado en la galería. También los encontrarás al expandir cualquier galería con creativos generados.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
@@ -232,13 +273,15 @@ export default function CreativePage() {
       <Modal open={showBatch} onClose={() => !batchStreaming && setShowBatch(false)} title="Nuevo batch de creativos" className="max-w-lg">
         <form onSubmit={(e) => {
           e.preventDefault();
+          const selectedProduct = products?.find((p) => p.id === batchForm.product_id);
           generateBatchStream(
             {
-              product_name: batchForm.product_description,
+              product_name: selectedProduct?.name || batchForm.product_description,
               product_description: batchForm.product_description,
               product_id: batchForm.product_id || undefined,
               gallery_name: batchForm.gallery_name || undefined,
               preset_id: batchForm.preset_id,
+              product_image_url: selectedProduct?.image_url || "",
             },
             () => {
               setShowBatch(false);
@@ -452,7 +495,7 @@ export default function CreativePage() {
                 const ext = blob.type.includes("jpeg") ? "jpg" : blob.type.includes("webp") ? "webp" : "png";
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
-                a.href = url; a.download = `nexos_${new Date().toISOString().slice(0, 10)}.${ext}`;
+                a.href = url; a.download = `nexom_${new Date().toISOString().slice(0, 10)}.${ext}`;
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 URL.revokeObjectURL(url);
               } catch { /* ignore */ }
@@ -468,6 +511,124 @@ export default function CreativePage() {
             className="max-w-full max-h-full object-contain rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Persistent Prompt Pack — reads from batch.config.prompt_pack              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+function BatchPromptPack({ config }: { config: Record<string, unknown> | null }) {
+  const pack = (config?.prompt_pack ?? []) as Array<{ type: string; style: string; prompt: string }>;
+  const [expanded, setExpanded] = useState(false);
+
+  if (!pack.length) return null;
+
+  const imagePrompts = pack.filter((p) => p.type === "image");
+  const videoPrompts = pack.filter((p) => p.type === "video");
+
+  // Group image prompts by style
+  const styleGroups = imagePrompts.reduce<Record<string, typeof imagePrompts>>((acc, p) => {
+    const style = p.style || "general";
+    if (!acc[style]) acc[style] = [];
+    acc[style].push(p);
+    return acc;
+  }, {});
+
+  const styleLabels: Record<string, string> = {
+    product_only: "Producto limpio",
+    lifestyle: "Estilo de vida",
+    editorial: "Editorial",
+    ugc_style: "UGC / Orgánico",
+    flat_lay: "Vista cenital",
+    detail: "Detalle / Macro",
+    context: "En contexto",
+    video: "Video",
+    general: "General",
+  };
+
+  return (
+    <div className="mt-4">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        {expanded ? "Ocultar" : "Ver"} Prompt Pack ({pack.length} prompts listos)
+      </button>
+
+      {expanded && (
+        <div className="mt-3 space-y-4 animate-fade-in">
+          {/* Copy all button */}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-muted-foreground">
+              Prompts profesionales listos para copiar y usar en cualquier generador de imágenes o video.
+            </p>
+            <button
+              onClick={() => {
+                const text = pack
+                  .map((p) => `[${p.type.toUpperCase()} — ${styleLabels[p.style] || p.style}]\n${p.prompt}`)
+                  .join("\n\n");
+                navigator.clipboard.writeText(text);
+              }}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 shrink-0"
+            >
+              📋 Copiar todos
+            </button>
+          </div>
+
+          {/* Image prompts by style */}
+          {Object.entries(styleGroups).map(([style, prompts]) => (
+            <div key={style}>
+              <p className="text-[10px] font-semibold text-cyan-400 uppercase tracking-wider mb-1.5">
+                📸 {styleLabels[style] || style}
+              </p>
+              <div className="space-y-1.5">
+                {prompts.map((p, i) => (
+                  <div
+                    key={i}
+                    className="group flex items-start gap-3 px-3 py-2 bg-muted/30 rounded-lg hover:bg-muted/60 transition-colors"
+                  >
+                    <p className="text-xs text-foreground/80 flex-1 leading-relaxed">{p.prompt}</p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(p.prompt)}
+                      className="opacity-0 group-hover:opacity-100 shrink-0 text-[10px] text-muted-foreground hover:text-foreground transition-all mt-0.5"
+                    >
+                      📋
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Video prompts */}
+          {videoPrompts.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider mb-1.5">
+                🎬 Ideas de video
+              </p>
+              <div className="space-y-1.5">
+                {videoPrompts.map((p, i) => (
+                  <div
+                    key={i}
+                    className="group flex items-start gap-3 px-3 py-2 bg-rose-400/5 rounded-lg hover:bg-rose-400/10 transition-colors"
+                  >
+                    <p className="text-xs text-foreground/80 flex-1 leading-relaxed">{p.prompt}</p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(p.prompt)}
+                      className="opacity-0 group-hover:opacity-100 shrink-0 text-[10px] text-muted-foreground hover:text-foreground transition-all mt-0.5"
+                    >
+                      📋
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

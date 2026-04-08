@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Send, Bot, User, Loader2,
   Plus, MessageSquare, Trash2, Edit3, Check, X, ChevronDown,
+  Copy, Camera, Video, Sparkles,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
@@ -122,7 +123,7 @@ export default function OrchestratorPage() {
             {allMessages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
                 <Bot className="w-12 h-12 text-violet-400 mb-3" />
-                <p className="text-sm text-foreground font-medium">Hola, soy el Orquestador de NexOS</p>
+                <p className="text-sm text-foreground font-medium">Hola, soy el Orquestador de NEXOM</p>
                 <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                   Puedo ayudarte con búsqueda de productos, branding, copywriting, ads, landing pages y más.
                 </p>
@@ -134,6 +135,7 @@ export default function OrchestratorPage() {
               const meta = AGENT_META.find((a) => a.id === msg.agent_type);
               const msgMeta = msg.meta_data as Record<string, unknown> | null;
               const images = msgMeta?.images as string[] | undefined;
+              const promptSuggestions = msgMeta?.prompt_suggestions as Array<{type: string; category: string; prompt: string}> | undefined;
 
               return (
                 <div key={msg.id} className={cn("flex gap-3 animate-fade-in group", isUser ? "flex-row-reverse" : "flex-row")}>
@@ -184,6 +186,9 @@ export default function OrchestratorPage() {
                                 <ImageWithLightbox key={i} src={src} onOpenLightbox={setLightboxSrc} />
                               ))}
                             </div>
+                          )}
+                          {promptSuggestions && promptSuggestions.length > 0 && (
+                            <PromptSuggestions suggestions={promptSuggestions} />
                           )}
                         </>
                       )}
@@ -365,7 +370,7 @@ export default function OrchestratorPage() {
                 const ext = blob.type.includes("jpeg") ? "jpg" : blob.type.includes("webp") ? "webp" : "png";
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
-                a.href = url; a.download = `nexos_${new Date().toISOString().slice(0, 10)}.${ext}`;
+                a.href = url; a.download = `nexom_${new Date().toISOString().slice(0, 10)}.${ext}`;
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 URL.revokeObjectURL(url);
               } catch { /* ignore */ }
@@ -509,6 +514,117 @@ function AgentSelector({
             })}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Prompt Suggestions Component ─────────────────────────────────────────────
+
+function PromptSuggestions({ suggestions }: { suggestions: Array<{ type: string; category: string; prompt: string }> }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  const imagePrompts = suggestions.filter((s) => s.type === "image");
+  const videoPrompts = suggestions.filter((s) => s.type === "video");
+
+  const handleCopy = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
+  const handleCopyAll = () => {
+    const allText = suggestions
+      .map((s) => `[${s.type.toUpperCase()} — ${s.category}]\n${s.prompt}`)
+      .join("\n\n");
+    navigator.clipboard.writeText(allText);
+    setCopiedIdx(-1);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
+  return (
+    <div className="mt-3 border border-border/50 rounded-xl overflow-hidden bg-background/30">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-accent/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+          <span className="text-xs font-medium text-violet-400">
+            Prompt Pack ({suggestions.length} prompts)
+          </span>
+        </div>
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && (
+        <div className="px-3 pb-3 space-y-2">
+          <div className="flex justify-end">
+            <button
+              onClick={handleCopyAll}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {copiedIdx === -1 ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+              {copiedIdx === -1 ? "Copied all!" : "Copy all"}
+            </button>
+          </div>
+
+          {imagePrompts.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                <Camera className="w-3 h-3" />
+                Images
+              </div>
+              {imagePrompts.map((s, i) => (
+                <div
+                  key={i}
+                  className="group flex items-start gap-2 px-2.5 py-2 rounded-lg bg-accent/20 hover:bg-accent/40 transition-colors cursor-pointer"
+                  onClick={() => handleCopy(s.prompt, i)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-semibold text-violet-400 block mb-0.5">{s.category}</span>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">{s.prompt}</p>
+                  </div>
+                  <div className="shrink-0 mt-0.5">
+                    {copiedIdx === i
+                      ? <Check className="w-3.5 h-3.5 text-green-400" />
+                      : <Copy className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {videoPrompts.length > 0 && (
+            <div className="space-y-1.5 mt-2">
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                <Video className="w-3 h-3" />
+                Video
+              </div>
+              {videoPrompts.map((s, i) => {
+                const globalIdx = imagePrompts.length + i;
+                return (
+                  <div
+                    key={globalIdx}
+                    className="group flex items-start gap-2 px-2.5 py-2 rounded-lg bg-accent/20 hover:bg-accent/40 transition-colors cursor-pointer"
+                    onClick={() => handleCopy(s.prompt, globalIdx)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-semibold text-rose-400 block mb-0.5">{s.category}</span>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">{s.prompt}</p>
+                    </div>
+                    <div className="shrink-0 mt-0.5">
+                      {copiedIdx === globalIdx
+                        ? <Check className="w-3.5 h-3.5 text-green-400" />
+                        : <Copy className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -54,6 +54,7 @@ export const creativeBatchService = {
       brand_palette?: string;
       preset_id?: string;
       gallery_name?: string;
+      product_image_url?: string;
     },
     onProgress: (event: { stage: string; pct: number; message?: string; detail?: string }) => void,
     onDone: (data: Record<string, unknown>) => void,

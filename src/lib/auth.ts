@@ -3,7 +3,7 @@ import Cookies from "js-cookie";
 // The access token is stored as a regular cookie (readable by JS)
 // The refresh token is httpOnly (invisible to JS, sent by browser automatically)
 
-const ACCESS_TOKEN_KEY = "nexos_at";
+const ACCESS_TOKEN_KEY = "nexom_at";
 
 export function storeAccessToken(token: string) {
   // Short-lived cookie readable by client JS & middleware

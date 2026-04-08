@@ -94,6 +94,7 @@ export function useGenerateBatchStream() {
     detail?: string;
   } | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [promptPack, setPromptPack] = useState<Array<{ type: string; style: string; prompt: string }>>([]);
 
   const generate = async (
     body: {
@@ -103,10 +104,12 @@ export function useGenerateBatchStream() {
       brand_palette?: string;
       preset_id?: string;
       gallery_name?: string;
+      product_image_url?: string;
     },
     onSuccess?: () => void,
   ) => {
     setIsPending(true);
+    setPromptPack([]);
     setProgress({ stage: "connecting", pct: 2, message: "Starting batch..." });
 
     try {
@@ -121,9 +124,14 @@ export function useGenerateBatchStream() {
             detail: event.detail,
           });
         },
-        (_data) => {
+        (data) => {
           setProgress(null);
           setIsPending(false);
+          // Extract prompt pack from done payload
+          const pack = data?.prompt_pack;
+          if (Array.isArray(pack)) {
+            setPromptPack(pack as Array<{ type: string; style: string; prompt: string }>);
+          }
           qc.invalidateQueries({ queryKey: batchKeys.list });
           qc.invalidateQueries({ queryKey: creativeKeys.unassigned });
           qc.invalidateQueries({ queryKey: ["org", "usage"] });
@@ -145,7 +153,7 @@ export function useGenerateBatchStream() {
     }
   };
 
-  return { generate, progress, isPending };
+  return { generate, progress, isPending, promptPack };
 }
 
 export function useDeleteBatch() {

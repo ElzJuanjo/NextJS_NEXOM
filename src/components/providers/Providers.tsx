@@ -22,7 +22,7 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    const stored = localStorage.getItem("nexos-theme") as Theme | null;
+    const stored = localStorage.getItem("nexom-theme") as Theme | null;
     const preferred = stored ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     setTheme(preferred);
     document.documentElement.classList.toggle("dark", preferred === "dark");
@@ -32,7 +32,7 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.classList.toggle("dark", next === "dark");
-    localStorage.setItem("nexos-theme", next);
+    localStorage.setItem("nexom-theme", next);
   };
 
   return <ThemeCtx.Provider value={{ theme, toggle }}>{children}</ThemeCtx.Provider>;

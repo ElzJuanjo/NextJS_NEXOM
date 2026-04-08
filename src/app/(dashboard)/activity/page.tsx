@@ -155,7 +155,7 @@ export default function ActivityPage() {
                                             {content && (
                                                 <div>
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Output</p>
-                                                    <div className="px-3 py-2 bg-muted/50 rounded-lg text-xs text-foreground max-h-64 overflow-y-auto scrollbar-thin">
+                                                    <div className="px-3 py-2 bg-muted/50 rounded-lg text-xs text-foreground max-h-[80vh] overflow-y-auto scrollbar-thin">
                                                         <MarkdownRenderer content={content} />
                                                     </div>
                                                 </div>
