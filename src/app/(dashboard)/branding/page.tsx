@@ -110,7 +110,7 @@ export default function BrandingPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="Gestión de Marca" subtitle="Identidad de marca e IA de branding" action={{ label: "Nueva marca", onClick: openCreate }} />
+      <Header title="Gestión de Marca" subtitle="Identidad de marca e IA de branding" />
 
       <div className="flex-1 p-6">
         {/* Action buttons */}

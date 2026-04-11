@@ -4,14 +4,14 @@ import { useState } from "react";
 import {
   Package, Plus, Edit3, Trash2, DollarSign, ImageOff, Check, ImageIcon,
   Trophy, TrendingUp, Star, ExternalLink, BarChart3, ShoppingCart,
-  Eye,
+  Eye, Download, Boxes, Truck,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
-import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "@/hooks/use-products";
+import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useImportFromDropi } from "@/hooks/use-products";
 import { useBrands } from "@/hooks/use-brands";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { ProductResponse } from "@/types";
@@ -138,7 +138,21 @@ function PlatformBadge({ platform }: { platform: string }) {
   );
 }
 
-// ── Creative Picker (unchanged from original) ──────────────────────────────
+// ── Platform label helper ─────────────────────────────────────────────────
+
+function getPlatformLabel(platform: string): string {
+  const labels: Record<string, string> = {
+    mercadolibre: "MercadoLibre",
+    google_shopping: "Google",
+    aliexpress: "AliExpress",
+    amazon: "Amazon",
+    temu: "Temu",
+    shopee: "Shopee",
+  };
+  return labels[platform] || "Tienda";
+}
+
+// ── Creative Picker ──────────────────────────────────────────────────
 
 function CreativePickerField({
   productId,
@@ -210,6 +224,58 @@ function CreativePickerField({
   );
 }
 
+// ── Dropi Import Modal ────────────────────────────────────────────────────
+
+function DropiImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [dropiId, setDropiId] = useState("");
+  const importFromDropi = useImportFromDropi();
+
+  const handleImport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dropiId.trim()) return;
+    importFromDropi.mutate(dropiId.trim(), {
+      onSuccess: () => {
+        setDropiId("");
+        onClose();
+      },
+    });
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Importar desde Dropi" className="max-w-md">
+      <form onSubmit={handleImport} className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Ingresa el ID del producto en Dropi para importar automáticamente su información (nombre, precio, imagen, variaciones).
+        </p>
+        <div>
+          <label className="text-sm font-medium text-foreground block mb-1.5">ID del producto Dropi</label>
+          <input
+            value={dropiId}
+            onChange={(e) => setDropiId(e.target.value)}
+            placeholder="Ej: 12345"
+            required
+            className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={importFromDropi.isPending || !dropiId.trim()}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60"
+        >
+          {importFromDropi.isPending ? (
+            <Spinner className="w-4 h-4 text-primary-foreground" />
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              Importar producto
+            </>
+          )}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
 // ── Product Detail Modal ───────────────────────────────────────────────────
 
 function ProductDetailModal({
@@ -227,7 +293,7 @@ function ProductDetailModal({
 }) {
   if (!product) return null;
 
-  const auto = isAutoPersisted(product) ? product.extra_data as AutoPersistedData : null;
+  const auto = isAutoPersisted(product) ? (product.extra_data as AutoPersistedData) : null;
 
   return (
     <Modal open={open} onClose={onClose} title={product.name} className="max-w-lg">
@@ -242,22 +308,131 @@ function ProductDetailModal({
         {/* Basic info */}
         <div className="flex items-center justify-between">
           <div>
-            {brand && (
-              <span className="text-xs text-pink-400 font-medium">{brand.name}</span>
-            )}
-            {product.description && (
-              <p className="text-sm text-muted-foreground mt-1">{product.description}</p>
-            )}
+            {brand && <span className="text-xs text-pink-400 font-medium">{brand.name}</span>}
+            {product.description && <p className="text-sm text-muted-foreground mt-1">{product.description}</p>}
           </div>
           {product.price_usd && (
-            <span className="text-lg font-bold text-foreground">
-              {formatCurrency(product.price_usd)}
-            </span>
+            <span className="text-lg font-bold text-foreground">{formatCurrency(product.price_usd)}</span>
           )}
         </div>
 
-        {/* Winner scoring section */}
-        {auto && (
+        {/* Dropi import section */}
+        {auto && auto.source === "dropi_import" && (
+          <div className="bg-secondary/50 border border-border rounded-xl p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-green-400" />
+                <span className="text-sm font-semibold text-foreground">Importado desde Dropi</span>
+              </div>
+              <PlatformBadge platform="dropi" />
+            </div>
+
+            {/* Pricing, Stock, Variations — extracted for clean typing */}
+            {(() => {
+              const extra = product.extra_data as Record<string, unknown> | null;
+              if (!extra) return null;
+
+              const priceProv = Number(extra.price_cop_proveedor) || 0;
+              const priceSug = Number(extra.price_cop_sugerido) || 0;
+              const margin = Number(extra.margin_pct) || 0;
+              const stock = Number(extra.stock) || 0;
+              const category = (extra.category as string) || "";
+              const variations = (extra.variations as Array<{ name: string; stock: number }>) || [];
+
+              return (
+                <>
+                  {/* Pricing */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center">
+                      <span className="text-sm font-semibold text-foreground">
+                        ${priceProv.toLocaleString("es-CO", { maximumFractionDigits: 0 })}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">Precio proveedor</p>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-sm font-semibold text-foreground">
+                        ${priceSug.toLocaleString("es-CO", { maximumFractionDigits: 0 })}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">Precio sugerido</p>
+                    </div>
+                    <div className="text-center">
+                      <span className={cn(
+                        "text-sm font-semibold",
+                        margin >= 30 ? "text-emerald-400" : "text-amber-400"
+                      )}>
+                        {margin.toFixed(1)}%
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">Margen</p>
+                    </div>
+                  </div>
+
+                  {/* Stock & Category */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2">
+                      <Boxes className="w-3.5 h-3.5 text-blue-400" />
+                      <div>
+                        <span className="text-sm font-semibold text-foreground">{stock}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1">unidades</span>
+                      </div>
+                    </div>
+                    {category && (
+                      <div className="flex items-center gap-2">
+                        <Package className="w-3.5 h-3.5 text-violet-400" />
+                        <span className="text-xs text-muted-foreground">{category}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Variations */}
+                  {variations.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">Variaciones</span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {variations.map((v, i) => (
+                          <div key={i} className="flex items-center justify-between px-2 py-1 rounded-md bg-muted/50 text-xs">
+                            <span className="text-foreground">{v.name}</span>
+                            <span className={cn(
+                              "font-medium",
+                              v.stock > 0 ? "text-emerald-400" : "text-red-400"
+                            )}>
+                              {v.stock} uds
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Supplier + Link */}
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <div className="flex items-center gap-2">
+                {auto.seller && (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Truck className="w-3 h-3" />
+                    {auto.seller}
+                  </span>
+                )}
+              </div>
+              {auto.source_url && (
+                <a
+                  href={auto.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Ver en Dropi</span>
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Winner scoring section — only for scraped products, NOT dropi imports */}
+        {auto && auto.source !== "dropi_import" && (
           <div className="bg-secondary/50 border border-border rounded-xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -267,10 +442,8 @@ function ProductDetailModal({
               <ScoreRing score={auto.score_total} size={48} />
             </div>
 
-            {/* Score breakdown */}
             <ScoreBreakdownBar breakdown={auto.score_breakdown} />
 
-            {/* Metrics row */}
             <div className="grid grid-cols-3 gap-3">
               {auto.rating > 0 && (
                 <div className="text-center">
@@ -301,17 +474,9 @@ function ProductDetailModal({
               )}
             </div>
 
-            {/* Source info */}
             <div className="flex items-center justify-between pt-2 border-t border-border">
-              <div className="flex items-center gap-2">
-                <PlatformBadge platform={auto.source_platform} />
-                {auto.seller && (
-                  <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
-                    Seller: {auto.seller}
-                  </span>
-                )}
-              </div>
-              {auto.source_url && auto.source_url.startsWith("http") ? (
+              <PlatformBadge platform={auto.source_platform} />
+              {auto.source_url && (
                 <a
                   href={auto.source_url}
                   target="_blank"
@@ -319,21 +484,9 @@ function ProductDetailModal({
                   className="flex items-center gap-1 text-xs text-primary hover:underline"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  Ver fuente
+                  <span>Ver en {getPlatformLabel(auto.source_platform)}</span>
                 </a>
-              ) : auto.source_url ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(auto.source_url);
-                  }}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  title="Copiar URL de fuente"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Copiar URL
-                </button>
-              ) : null}
+              )}
             </div>
           </div>
         )}
@@ -345,23 +498,29 @@ function ProductDetailModal({
             {product.dropi_product_id && <span>Dropi: {product.dropi_product_id}</span>}
           </div>
           <button
-            onClick={() => onToggleActive?.(product.id, !product.is_active)}
+            onClick={() => { onToggleActive?.(product.id, !product.is_active); }}
             className="flex items-center gap-2 group/toggle"
           >
-            <span className={cn(
-              "text-xs font-medium transition-colors",
-              product.is_active ? "text-emerald-400" : "text-muted-foreground"
-            )}>
+            <span
+              className={cn(
+                "text-xs font-medium transition-colors",
+                product.is_active ? "text-emerald-400" : "text-muted-foreground"
+              )}
+            >
               {product.is_active ? "Activo" : "Inactivo"}
             </span>
-            <div className={cn(
-              "relative w-8 h-[18px] rounded-full transition-colors duration-200 cursor-pointer",
-              product.is_active ? "bg-emerald-400" : "bg-muted-foreground/30"
-            )}>
-              <span className={cn(
-                "absolute top-[3px] left-[3px] w-3 h-3 rounded-full bg-white transition-transform duration-200 shadow-sm",
-                product.is_active && "translate-x-3.5"
-              )} />
+            <div
+              className={cn(
+                "relative w-8 h-[18px] rounded-full transition-colors duration-200 cursor-pointer",
+                product.is_active ? "bg-emerald-400" : "bg-muted-foreground/30"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-[3px] left-[3px] w-3 h-3 rounded-full bg-white transition-transform duration-200 shadow-sm",
+                  product.is_active && "translate-x-3.5"
+                )}
+              />
             </div>
           </button>
         </div>
@@ -380,22 +539,30 @@ export default function ProductsPage() {
   const deleteProduct = useDeleteProduct();
 
   const [showForm, setShowForm] = useState(false);
+  const [showDropiImport, setShowDropiImport] = useState(false);
   const [editing, setEditing] = useState<ProductResponse | null>(null);
   const [viewing, setViewing] = useState<ProductResponse | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ProductFilter>("all");
   const [form, setForm] = useState({ name: "", brand_id: "", description: "", sku: "", price_usd: "", image_url: "" });
 
-  const openCreate = () => { setEditing(null); setForm({ name: "", brand_id: "", description: "", sku: "", price_usd: "", image_url: "" }); setShowForm(true); };
   const openEdit = (p: ProductResponse, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setEditing(p);
-    setForm({ name: p.name, brand_id: p.brand_id ?? "", description: p.description ?? "", sku: p.sku ?? "", price_usd: p.price_usd?.toString() ?? "", image_url: p.image_url ?? "" });
+    setForm({
+      name: p.name,
+      brand_id: p.brand_id ?? "",
+      description: p.description ?? "",
+      sku: p.sku ?? "",
+      price_usd: p.price_usd?.toString() ?? "",
+      image_url: p.image_url ?? "",
+    });
     setShowForm(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editing) return;
     const payload = {
       name: form.name,
       brand_id: form.brand_id || undefined,
@@ -404,11 +571,7 @@ export default function ProductsPage() {
       price_usd: form.price_usd ? parseFloat(form.price_usd) : undefined,
       image_url: form.image_url || undefined,
     };
-    if (editing) {
-      updateProduct.mutate({ id: editing.id, ...payload }, { onSuccess: () => setShowForm(false) });
-    } else {
-      createProduct.mutate(payload, { onSuccess: () => setShowForm(false) });
-    }
+    updateProduct.mutate({ id: editing.id, ...payload }, { onSuccess: () => setShowForm(false) });
   };
 
   // Filtering
@@ -427,18 +590,24 @@ export default function ProductsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="Productos" subtitle="Gestiona tu catálogo de productos" action={{ label: "Nuevo producto", onClick: openCreate }} />
+      {/* TAREA 7: sin "Nuevo producto" — TAREA 5: botón Dropi */}
+      <Header
+        title="Productos"
+        subtitle="Gestiona tu catálogo de productos"
+        action={{ label: "Importar desde Dropi", onClick: () => setShowDropiImport(true) }}
+      />
 
       <div className="flex-1 p-6 space-y-4">
         {/* Search + Filter bar */}
         {totalProducts > 0 && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-2">
             <input
-              value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar productos..."
               className="w-full max-w-sm px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
             />
 
-            {/* Filter pills */}
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setFilter("all")}
@@ -495,15 +664,15 @@ export default function ProductsPage() {
             description={
               search || filter !== "all"
                 ? "Intenta con otro término de búsqueda o cambia el filtro."
-                : "Agrega tu primer producto o usa el agente de búsqueda para encontrar productos ganadores."
+                : "Usa el agente de búsqueda para encontrar productos ganadores o importa desde Dropi."
             }
-            action={!search && filter === "all" ? { label: "Agregar producto", onClick: openCreate } : undefined}
+            action={!search && filter === "all" ? { label: "Importar desde Dropi", onClick: () => setShowDropiImport(true) } : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((product) => {
               const brand = brands?.find((b) => b.id === product.brand_id);
-              const auto = isAutoPersisted(product) ? product.extra_data as AutoPersistedData : null;
+              const auto = isAutoPersisted(product) ? (product.extra_data as AutoPersistedData) : null;
 
               return (
                 <div
@@ -519,7 +688,6 @@ export default function ProductsPage() {
                       <ImageOff className="w-8 h-8 text-muted-foreground/30" />
                     )}
 
-                    {/* Winner badge overlay */}
                     {auto && (
                       <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm">
                         <Trophy className="w-3 h-3 text-emerald-400" />
@@ -527,7 +695,6 @@ export default function ProductsPage() {
                       </div>
                     )}
 
-                    {/* Platform badge */}
                     {auto?.source_platform && (
                       <div className="absolute top-2 right-2">
                         <PlatformBadge platform={auto.source_platform} />
@@ -559,7 +726,7 @@ export default function ProductsPage() {
                     {brand && <p className="text-xs text-pink-400">{brand.name}</p>}
                     {product.description && <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>}
 
-                    {/* Winner metrics row */}
+                    {/* Winner metrics — Link como única referencia a fuente */}
                     {auto && (
                       <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                         {auto.rating > 0 && (
@@ -579,6 +746,18 @@ export default function ProductsPage() {
                             <BarChart3 className="w-2.5 h-2.5 text-blue-400" />
                             {auto.reviews_count} reviews
                           </span>
+                        )}
+                        {auto.source_url && (
+                          <a
+                            href={auto.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-0.5 text-primary hover:underline ml-auto"
+                          >
+                            <ExternalLink className="w-2.5 h-2.5" />
+                            {getPlatformLabel(auto.source_platform)}
+                          </a>
                         )}
                       </div>
                     )}
@@ -601,7 +780,10 @@ export default function ProductsPage() {
                         <button onClick={(e) => openEdit(product, e)} className="p-1.5 rounded-md hover:bg-accent transition-colors">
                           <Edit3 className="w-3 h-3 text-muted-foreground" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar?")) deleteProduct.mutate(product.id); }} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar?")) deleteProduct.mutate(product.id); }}
+                          className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                        >
                           <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
                         </button>
                       </div>
@@ -628,8 +810,8 @@ export default function ProductsPage() {
         }}
       />
 
-      {/* Create/Edit Modal */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? "Editar producto" : "Nuevo producto"} className="max-w-lg">
+      {/* Edit Modal */}
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Editar producto" className="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -669,12 +851,15 @@ export default function ProductsPage() {
 
             {editing && <CreativePickerField productId={editing.id} currentUrl={form.image_url} onSelect={(url) => setForm({ ...form, image_url: url })} />}
           </div>
-          <button type="submit" disabled={createProduct.isPending || updateProduct.isPending}
+          <button type="submit" disabled={updateProduct.isPending}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
-            {(createProduct.isPending || updateProduct.isPending) ? <Spinner className="w-4 h-4 text-primary-foreground" /> : editing ? "Guardar" : "Crear producto"}
+            {updateProduct.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : "Guardar cambios"}
           </button>
         </form>
       </Modal>
+
+      {/* Dropi Import Modal */}
+      <DropiImportModal open={showDropiImport} onClose={() => setShowDropiImport(false)} />
     </div>
   );
 }

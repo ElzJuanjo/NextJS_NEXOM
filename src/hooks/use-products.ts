@@ -51,3 +51,17 @@ export function useDeleteProduct() {
     onError: (err: Error) => toast.error(err.message),
   });
 }
+
+export function useImportFromDropi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dropiProductId: string) => productService.importFromDropi(dropiProductId),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: productKeys.list });
+      toast.success(
+        `Producto "${data.dropi_name}" importado — Stock: ${data.dropi_stock}, Variaciones: ${data.variations_count}`
+      );
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}

@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import anime from "animejs";
 import {
   LayoutDashboard, GitBranch, Palette, Layout as LayoutIcon, ImageIcon,
-  Settings, ChevronLeft, Menu, X, Zap, HelpCircle, LogOut, Package, Workflow, Activity, PenLine,
+  Settings, ChevronLeft, Menu, X, Zap, HelpCircle, LogOut, Package, Workflow, Activity, PenLine, Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMe, useLogout } from "@/hooks/use-auth";
@@ -21,6 +21,7 @@ const navItems = [
   { label: "Copywriting", href: "/copywriting", icon: PenLine, color: "text-amber-400", activeBg: "bg-amber-400/10" },
   { label: "Productos", href: "/products", icon: Package, color: "text-emerald-400", activeBg: "bg-emerald-400/10" },
   { label: "Flows", href: "/flows", icon: Workflow, color: "text-blue-400", activeBg: "bg-blue-400/10" },
+  { label: "Calculadora", href: "/calculator", icon: Calculator, color: "text-teal-400", activeBg: "bg-teal-400/10" },
   { label: "Actividad", href: "/activity", icon: Activity, color: "text-amber-400", activeBg: "bg-amber-400/10" },
   { label: "sep", href: "", icon: null },
   { label: "Configuración", href: "/settings", icon: Settings, color: "text-muted-foreground", activeBg: "bg-accent" },

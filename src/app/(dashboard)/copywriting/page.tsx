@@ -194,7 +194,6 @@ export default function CopywritingPage() {
       <Header
         title="Copywriting"
         subtitle="Biblioteca de copy assets — textos, headlines, ads y contenido"
-        action={{ label: "Nuevo copy", onClick: openCreate }}
       />
 
       <div className="flex-1 p-6 space-y-4 overflow-y-auto">

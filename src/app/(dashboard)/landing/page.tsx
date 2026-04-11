@@ -264,7 +264,6 @@ export default function LandingPage() {
       <Header
         title="Landing Pages"
         subtitle="Diseña y gestiona landing pages de alta conversión"
-        action={{ label: "Nueva landing", onClick: () => setShowCreate(true) }}
       />
 
       <div className="flex-1 p-6 space-y-4 overflow-y-auto">

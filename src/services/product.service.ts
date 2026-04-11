@@ -3,6 +3,13 @@ import type { ProductResponse } from "@/types";
 
 const BASE = "/api/v1/products";
 
+export interface ImportDropiResponse {
+  product: ProductResponse;
+  dropi_name: string;
+  dropi_stock: number;
+  variations_count: number;
+}
+
 export const productService = {
   async list() {
     const { data } = await apiClient.get<{ products: ProductResponse[] }>(BASE);
@@ -40,5 +47,12 @@ export const productService = {
 
   async remove(productId: string) {
     await apiClient.delete(`${BASE}/${productId}`);
+  },
+
+  async importFromDropi(dropiProductId: string) {
+    const { data } = await apiClient.post<ImportDropiResponse>(`${BASE}/import-dropi`, {
+      dropi_product_id: dropiProductId,
+    });
+    return data;
   },
 };
