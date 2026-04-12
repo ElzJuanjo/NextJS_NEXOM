@@ -4,11 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import {
   Send, Bot, User, Loader2,
   Plus, MessageSquare, Trash2, Edit3, Check, X, ChevronDown,
-  Copy, Camera, Video, Sparkles,
+  Copy, Camera, Video, Sparkles, ImagePlus,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import { useConversations, useConversation, useSendMessageStream, useDeleteConversation, useUpdateConversation } from "@/hooks/use-conversations";
+import { useConversations, useConversation, useSendMessageStream, useDeleteConversation, useUpdateConversation, useUploadChatImage } from "@/hooks/use-conversations";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { AGENT_META, type ConversationMessageResponse } from "@/types";
 import { useSearchParams } from "next/navigation";
@@ -56,6 +56,10 @@ export default function OrchestratorPage() {
 
   const [convoSearch, setConvoSearch] = useState("");
 
+  const uploadImage = useUploadChatImage();
+  const [attachedImages, setAttachedImages] = useState<Array<{ url: string; file: File; preview: string }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [allMessages.length]);
@@ -67,27 +71,62 @@ export default function OrchestratorPage() {
     }
   }, [searchParams]);
 
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    for (const file of files.slice(0, 5 - attachedImages.length)) {
+      if (!file.type.startsWith("image/")) continue;
+      if (file.size > 10 * 1024 * 1024) continue;
+
+      const preview = URL.createObjectURL(file);
+      setAttachedImages((prev) => [...prev, { url: "", file, preview }]);
+
+      try {
+        const result = await uploadImage.mutateAsync(file);
+        setAttachedImages((prev) =>
+          prev.map((img) => (img.preview === preview ? { ...img, url: result.url } : img))
+        );
+      } catch {
+        setAttachedImages((prev) => prev.filter((img) => img.preview !== preview));
+        URL.revokeObjectURL(preview);
+      }
+    }
+
+    if (e.target) e.target.value = "";
+  };
+
+  const removeAttachedImage = (preview: string) => {
+    setAttachedImages((prev) => prev.filter((img) => img.preview !== preview));
+    URL.revokeObjectURL(preview);
+  };
+
   const handleSend = () => {
     const text = input.trim();
-    if (!text || sendPending) return;
+    const hasImages = attachedImages.length > 0 && attachedImages.every((img) => img.url);
+    if ((!text && !hasImages) || sendPending) return;
+
+    const imageUrls = hasImages ? attachedImages.map((img) => img.url) : undefined;
 
     const tempUserMsg: ConversationMessageResponse = {
       id: `temp-${Date.now()}`,
       role: "user",
-      content: text,
+      content: text || "(imagen adjunta)",
       agent_type: null,
-      meta_data: null,
+      meta_data: imageUrls ? { images: imageUrls } : null,
       created_at: new Date().toISOString(),
     };
     setPendingMessages((prev) => [...prev, tempUserMsg]);
     setInput("");
+    setAttachedImages([]);
     if (inputRef.current) inputRef.current.style.height = "36px";
 
     sendMessageStream(
       {
-        content: text,
+        content: text || "Analyze this image",
         conversation_id: activeConvoId ?? undefined,
         force_agent: selectedAgent ?? undefined,
+        image_urls: imageUrls,
       },
       (data) => {
         setActiveConvoId(data.conversation_id);
@@ -100,6 +139,7 @@ export default function OrchestratorPage() {
     setActiveConvoId(null);
     setPendingMessages([]);
     setInput("");
+    setAttachedImages([]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -135,7 +175,7 @@ export default function OrchestratorPage() {
               const meta = AGENT_META.find((a) => a.id === msg.agent_type);
               const msgMeta = msg.meta_data as Record<string, unknown> | null;
               const images = msgMeta?.images as string[] | undefined;
-              const promptSuggestions = msgMeta?.prompt_suggestions as Array<{type: string; category: string; prompt: string}> | undefined;
+              const promptSuggestions = msgMeta?.prompt_suggestions as Array<{ type: string; category: string; prompt: string }> | undefined;
 
               return (
                 <div key={msg.id} className={cn("flex gap-3 animate-fade-in group", isUser ? "flex-row-reverse" : "flex-row")}>
@@ -159,7 +199,22 @@ export default function OrchestratorPage() {
                         : "bg-card border border-border text-foreground rounded-tl-sm"
                     )}>
                       {isUser ? (
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                        <>
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          {images && images.length > 0 && (
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                              {images.map((src, i) => (
+                                <img
+                                  key={i}
+                                  src={src}
+                                  alt="Attached"
+                                  className="w-20 h-20 rounded-lg object-cover border border-white/20 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => setLightboxSrc(src)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <>
                           <MarkdownRenderer content={msg.content} />
@@ -231,7 +286,55 @@ export default function OrchestratorPage() {
 
           {/* Input */}
           <div className="p-3 sm:p-4 border-t border-border shrink-0 space-y-1.5">
+            {/* Image previews */}
+            {attachedImages.length > 0 && (
+              <div className="flex gap-2 px-1 pb-1 overflow-x-auto scrollbar-thin">
+                {attachedImages.map((img) => (
+                  <div key={img.preview} className="relative group shrink-0">
+                    <img
+                      src={img.preview}
+                      alt="Attached"
+                      className="w-16 h-16 rounded-lg object-cover border border-border"
+                    />
+                    {!img.url && (
+                      <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => removeAttachedImage(img.preview)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-end gap-2 bg-secondary border border-border rounded-xl focus-within:border-ring focus-within:ring-1 focus-within:ring-ring transition-all p-2">
+              {/* Image upload button */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={attachedImages.length >= 5 || uploadImage.isPending}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 shrink-0"
+                title="Adjuntar imagen"
+              >
+                {uploadImage.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="w-4 h-4" />
+                )}
+              </button>
+
               <textarea ref={inputRef} value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
@@ -245,7 +348,7 @@ export default function OrchestratorPage() {
                 className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none leading-relaxed scrollbar-thin min-w-0"
                 style={{ minHeight: "36px", maxHeight: "200px" }}
               />
-              <button onClick={handleSend} disabled={!input.trim() || sendPending}
+              <button onClick={handleSend} disabled={(!input.trim() && !attachedImages.some(i => i.url)) || sendPending}
                 className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0 disabled:opacity-40 transition-all hover:opacity-90">
                 {sendPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               </button>

@@ -30,7 +30,7 @@ export const conversationService = {
   },
 
   async sendStream(
-    body: { content: string; conversation_id?: string; force_agent?: string },
+    body: { content: string; conversation_id?: string; force_agent?: string; image_urls?: string[] },
     onProgress: (event: { stage: string; pct: number; agent?: string; message?: string }) => void,
     onDone: (data: SendMessageResponse) => void,
     onError: (error: string) => void,
@@ -85,3 +85,15 @@ export const conversationService = {
     }
   },
 };
+
+
+export async function uploadChatImage(file: File): Promise<{ url: string; filename: string; content_type: string; size: number }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { data } = await apiClient.post("/api/v1/uploads/image", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  return data;
+}

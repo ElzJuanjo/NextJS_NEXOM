@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { conversationService } from "@/services/conversation.service";
+import { conversationService, uploadChatImage } from "@/services/conversation.service";
 import { orgKeys } from "./use-org";
 import { useState, useRef } from "react";
 import type { SendMessageResponse } from "@/types";
@@ -65,7 +65,7 @@ export function useSendMessageStream() {
     };
 
     const send = async (
-        body: { content: string; conversation_id?: string; force_agent?: string },
+        body: { content: string; conversation_id?: string; force_agent?: string; image_urls?: string[] },
         onSuccess: (data: SendMessageResponse) => void,
     ) => {
         setIsPending(true);
@@ -115,4 +115,10 @@ export function useSendMessageStream() {
     };
 
     return { send, progress, isPending };
+}
+
+export function useUploadChatImage() {
+    return useMutation({
+        mutationFn: uploadChatImage,
+    });
 }
