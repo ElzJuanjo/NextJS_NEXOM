@@ -12,6 +12,8 @@ import { useConversations, useConversation, useSendMessageStream, useDeleteConve
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { AGENT_META, type ConversationMessageResponse } from "@/types";
 import { useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
+import { useMe } from "@/hooks/use-auth";
 
 
 const AGENT_OPTIONS = [
@@ -29,6 +31,7 @@ const AGENT_OPTIONS = [
 
 
 export default function OrchestratorPage() {
+  const { data: me } = useMe();
   const searchParams = useSearchParams();
 
   const { data: conversations } = useConversations();
@@ -57,8 +60,9 @@ export default function OrchestratorPage() {
   const [convoSearch, setConvoSearch] = useState("");
 
   const uploadImage = useUploadChatImage();
-  const [attachedImages, setAttachedImages] = useState<Array<{ url: string; file: File; preview: string }>>([]);
+  const [attachedImages, setAttachedImages] = useState<Array<{ file: File; preview: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,28 +75,24 @@ export default function OrchestratorPage() {
     }
   }, [searchParams]);
 
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    if (files.length === 0 || attachedImages.length >= 1) return;
 
-    for (const file of files.slice(0, 5 - attachedImages.length)) {
-      if (!file.type.startsWith("image/")) continue;
-      if (file.size > 10 * 1024 * 1024) continue;
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const file = files[0];
 
-      const preview = URL.createObjectURL(file);
-      setAttachedImages((prev) => [...prev, { url: "", file, preview }]);
-
-      try {
-        const result = await uploadImage.mutateAsync(file);
-        setAttachedImages((prev) =>
-          prev.map((img) => (img.preview === preview ? { ...img, url: result.url } : img))
-        );
-      } catch {
-        setAttachedImages((prev) => prev.filter((img) => img.preview !== preview));
-        URL.revokeObjectURL(preview);
-      }
+    if (!file.type.startsWith("image/")) {
+      toast.error(`${file.name} no es una imagen`);
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`${file.name} supera 10MB`);
+      return;
     }
 
+    const preview = URL.createObjectURL(file);
+    setAttachedImages([{ file, preview }]);
     if (e.target) e.target.value = "";
   };
 
@@ -101,12 +101,27 @@ export default function OrchestratorPage() {
     URL.revokeObjectURL(preview);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim();
-    const hasImages = attachedImages.length > 0 && attachedImages.every((img) => img.url);
-    if ((!text && !hasImages) || sendPending) return;
+    const hasImages = attachedImages.length > 0;
+    if ((!text && !hasImages) || sendPending || isUploading) return;
 
-    const imageUrls = hasImages ? attachedImages.map((img) => img.url) : undefined;
+    let imageUrls: string[] | undefined;
+
+    // Subir imágenes a S3 ahora (solo si hay)
+    if (hasImages) {
+      setIsUploading(true);
+      try {
+        const uploads = await Promise.all(
+          attachedImages.map((img) => uploadImage.mutateAsync(img.file))
+        );
+        imageUrls = uploads.map((u) => u.url);
+      } catch {
+        setIsUploading(false);
+        return; // toast.error ya lo maneja el mutation
+      }
+      setIsUploading(false);
+    }
 
     const tempUserMsg: ConversationMessageResponse = {
       id: `temp-${Date.now()}`,
@@ -179,12 +194,18 @@ export default function OrchestratorPage() {
 
               return (
                 <div key={msg.id} className={cn("flex gap-3 animate-fade-in group", isUser ? "flex-row-reverse" : "flex-row")}>
-                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
                     isUser
                       ? "bg-gradient-to-br from-slate-600 to-slate-700 border border-border"
                       : "bg-gradient-to-br from-violet-500 to-indigo-600"
                   )}>
-                    {isUser ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
+                    {isUser ? (
+                      me?.avatar_url
+                        ? <img src={me.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        : <User className="w-4 h-4 text-white" />
+                    ) : (
+                      <Bot className="w-4 h-4 text-white" />
+                    )}
                   </div>
 
                   <div className={cn("max-w-[85%] lg:max-w-[75%] space-y-1 flex flex-col", isUser ? "items-end" : "items-start")}>
@@ -296,11 +317,6 @@ export default function OrchestratorPage() {
                       alt="Attached"
                       className="w-16 h-16 rounded-lg object-cover border border-border"
                     />
-                    {!img.url && (
-                      <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 text-white animate-spin" />
-                      </div>
-                    )}
                     <button
                       onClick={() => removeAttachedImage(img.preview)}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -318,21 +334,16 @@ export default function OrchestratorPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                multiple
                 onChange={handleImageSelect}
                 className="hidden"
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={attachedImages.length >= 5 || uploadImage.isPending}
+                disabled={attachedImages.length >= 1}
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 shrink-0"
                 title="Adjuntar imagen"
               >
-                {uploadImage.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ImagePlus className="w-4 h-4" />
-                )}
+                <ImagePlus className="w-4 h-4" />
               </button>
 
               <textarea ref={inputRef} value={input}
@@ -348,9 +359,9 @@ export default function OrchestratorPage() {
                 className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none leading-relaxed scrollbar-thin min-w-0"
                 style={{ minHeight: "36px", maxHeight: "200px" }}
               />
-              <button onClick={handleSend} disabled={(!input.trim() && !attachedImages.some(i => i.url)) || sendPending}
+              <button onClick={handleSend} disabled={(!input.trim() && attachedImages.length === 0) || sendPending || isUploading}
                 className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0 disabled:opacity-40 transition-all hover:opacity-90">
-                {sendPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                {(sendPending || isUploading) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               </button>
             </div>
             <div className="flex items-center gap-2 px-1">

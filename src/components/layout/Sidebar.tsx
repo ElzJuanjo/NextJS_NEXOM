@@ -89,8 +89,11 @@ function NavContent({
         </button>
 
         <div className="flex items-center gap-2 px-2 py-2 mt-1">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-            {displayInitial}
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+            {user?.avatar_url
+              ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              : displayInitial
+            }
           </div>
           {sidebarOpen && (
             <div className="min-w-0 flex-1 animate-fade-in-left">

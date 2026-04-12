@@ -359,8 +359,11 @@ export default function SettingsPage() {
                 <div className="bg-card border border-border rounded-xl p-6 space-y-4">
                   <h3 className="text-base font-semibold text-foreground">Perfil de usuario</h3>
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
-                      {user?.full_name?.charAt(0)?.toUpperCase() ?? "U"}
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                      {user?.avatar_url
+                        ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        : user?.full_name?.charAt(0)?.toUpperCase() ?? "U"
+                      }
                     </div>
                     <div>
                       <p className="text-lg font-semibold text-foreground">{user?.full_name}</p>
