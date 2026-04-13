@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   ImageIcon, Sparkles, Link2, Trash2, FolderOpen, ChevronDown,
-  ChevronRight, Edit3, FolderPlus, ArrowRightLeft, X, Monitor,
+  ChevronRight, Edit3, FolderPlus, ArrowRightLeft, X, Monitor, ImagePlus,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
@@ -20,6 +20,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import type { CreativeResponse, CreativeBatchResponse } from "@/types";
 import { PlatformPreview } from "@/components/ui/PlatformPreview";
 import { useMyOrg } from "@/hooks/use-org";
+import toast from "react-hot-toast";
 
 type ViewMode = "batches" | "product" | "unassigned";
 
@@ -50,6 +51,8 @@ export default function CreativePage() {
   const [showAssign, setShowAssign] = useState<CreativeResponse | null>(null);
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
   const [batchForm, setBatchForm] = useState({ gallery_name: "", product_description: "", preset_id: "starter", product_id: "" });
+  const [batchRefImage, setBatchRefImage] = useState<{ preview: string; base64: string } | null>(null);
+  const batchFileRef = useRef<HTMLInputElement>(null);
   const [showNewGallery, setShowNewGallery] = useState(false);
   const [newGalleryName, setNewGalleryName] = useState("");
   const [editingBatch, setEditingBatch] = useState<CreativeBatchResponse | null>(null);
@@ -65,6 +68,20 @@ export default function CreativePage() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const handleBatchImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("Imagen supera 10MB"); return; }
+
+    const preview = URL.createObjectURL(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBatchRefImage({ preview, base64: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+    if (e.target) e.target.value = "";
   };
 
   return (
@@ -281,11 +298,12 @@ export default function CreativePage() {
               product_id: batchForm.product_id || undefined,
               gallery_name: batchForm.gallery_name || undefined,
               preset_id: batchForm.preset_id,
-              product_image_url: selectedProduct?.image_url || "",
+              product_image_url: batchRefImage?.base64 || selectedProduct?.image_url || "",
             },
             () => {
               setShowBatch(false);
               setBatchForm({ gallery_name: "", product_description: "", preset_id: "starter", product_id: "" });
+              setBatchRefImage(null);
             },
           );
         }} className="space-y-4">
@@ -318,6 +336,44 @@ export default function CreativePage() {
               <option value="campaign">5 imágenes</option>
               <option value="full">10 imágenes</option>
             </select>
+          </div>
+
+          {/* Reference image */}
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1.5">Imagen de referencia (opcional)</label>
+            <input
+              ref={batchFileRef}
+              type="file"
+              accept="image/*"
+              onChange={handleBatchImageSelect}
+              className="hidden"
+            />
+            {batchRefImage ? (
+              <div className="flex items-center gap-3">
+                <img src={batchRefImage.preview} alt="" className="w-16 h-16 rounded-lg object-cover border border-border" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Imagen de referencia cargada</p>
+                  <p className="text-[10px] text-muted-foreground">Los creativos se generarán basados en este producto</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setBatchRefImage(null); }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => batchFileRef.current?.click()}
+                disabled={batchStreaming}
+                className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-ring transition-colors disabled:opacity-50"
+              >
+                <ImagePlus className="w-4 h-4" />
+                Cargar imagen del producto
+              </button>
+            )}
           </div>
 
           {/* ── Progress bar ── */}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Layout, Eye, Trash2, ChevronDown, ChevronRight,
-  ChevronUp, Edit3, EyeOff, Download, GripVertical, Code, Plus, Palette,
+  ChevronUp, Edit3, EyeOff, Download, GripVertical, Code, Plus, Palette, X,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { useBrands, useUpdateBrand } from "@/hooks/use-brands";
+import { useCreatives } from "@/hooks/use-creatives";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useLandingPages, useCreateLanding, useDeleteLanding, useUpdateLanding,
@@ -20,6 +21,7 @@ import {
 } from "@/hooks/use-landing-pages";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { LandingPageResponse, LandingSectionResponse } from "@/types";
+import { useRouter } from "next/navigation";
 
 const SECTION_TYPES = [
   { id: "hero", label: "Hero", icon: "🎯" },
@@ -34,7 +36,23 @@ const SECTION_TYPES = [
   { id: "faq", label: "FAQ", icon: "❓" },
   { id: "cta", label: "CTA Final", icon: "🚀" },
   { id: "gallery", label: "Galería", icon: "🖼" },
+  { id: "product_gallery", label: "Galería Producto", icon: "📸" },
+  { id: "specs", label: "Especificaciones", icon: "📋" },
+  { id: "video_embed", label: "Video", icon: "🎬" },
+  { id: "comparison", label: "Comparativa", icon: "⚖️" },
+  { id: "countdown", label: "Countdown", icon: "⏳" },
+  { id: "trust_badges", label: "Trust Badges", icon: "🛡️" },
+  { id: "brand_story", label: "Historia", icon: "📖" },
   { id: "custom", label: "Custom", icon: "📝" },
+];
+
+const TEMPLATES = [
+  { id: "modern", name: "Modern", emoji: "🟣", description: "Gradientes, cards interactivas, SaaS" },
+  { id: "minimal", name: "Minimal", emoji: "⬜", description: "Espacios amplios, editorial" },
+  { id: "bold", name: "Bold", emoji: "🟥", description: "Tipografía grande, alto contraste" },
+  { id: "ecommerce", name: "E-Commerce", emoji: "🛒", description: "Estilo Shopify, producto" },
+  { id: "dark", name: "Dark", emoji: "🌑", description: "Fondo oscuro, acentos neón" },
+  { id: "elegant", name: "Elegant", emoji: "✨", description: "Serif, lujo, sofisticado" },
 ];
 
 function getSectionMeta(type: string) {
@@ -42,11 +60,11 @@ function getSectionMeta(type: string) {
 }
 
 export default function LandingPage() {
+  const router = useRouter();
   const { data: brands } = useBrands();
   const queryClient = useQueryClient();
   const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>("all");
 
-  // For filtering landings: "all" shows everything, a brand ID filters by brand
   const brandFilterParam = selectedBrandFilter === "all" ? undefined : selectedBrandFilter;
 
   const { data: pages, isLoading } = useLandingPages(brandFilterParam);
@@ -60,7 +78,6 @@ export default function LandingPage() {
   const { html: previewHTML, loading: previewLoading, render: renderPreview, clear: clearPreview } = useRenderHTML();
   const updateBrand = useUpdateBrand();
 
-  const [showCreate, setShowCreate] = useState(false);
   const [expandedLanding, setExpandedLanding] = useState<string | null>(null);
   const [editingSection, setEditingSection] = useState<LandingSectionResponse | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -69,7 +86,7 @@ export default function LandingPage() {
   const [styleTargetLpId, setStyleTargetLpId] = useState<string | null>(null);
 
   const [form, setForm] = useState({ name: "", campaign: "" });
-  const [sectionForm, setSectionForm] = useState({ title: "", body: "", cta_text: "", cta_url: "" });
+  const [sectionForm, setSectionForm] = useState({ title: "", body: "", cta_text: "", cta_url: "", image_url: "" });
   const [newSectionType, setNewSectionType] = useState("custom");
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [editingName, setEditingName] = useState<{ lpId: string; name: string } | null>(null);
@@ -119,13 +136,11 @@ export default function LandingPage() {
     };
 
     if (lp.brand_id) {
-      // Update existing brand
       updateBrand.mutate(
         { id: lp.brand_id, color_palette: colorPalette, typography },
         { onSuccess: () => setShowStyleEditor(false) },
       );
     } else {
-      // Create a new brand with these styles and assign to landing
       try {
         const { brandService } = await import("@/services/brand.service");
         const newBrand = await brandService.create({
@@ -133,9 +148,7 @@ export default function LandingPage() {
           color_palette: colorPalette,
           typography,
         });
-        // Invalidate brands cache so /branding page sees the new brand
         queryClient.invalidateQueries({ queryKey: ["brands"] });
-        // Assign brand to landing
         updateLanding.mutate(
           { lpId: lp.id, body: { brand_id: newBrand.id } },
           { onSuccess: () => setShowStyleEditor(false) },
@@ -148,14 +161,6 @@ export default function LandingPage() {
 
   // ── Handlers ───────────────────────────────────────────────────────────
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    createLanding.mutate(
-      { name: form.name, campaign: form.campaign || undefined },
-      { onSuccess: () => { setShowCreate(false); setForm({ name: "", campaign: "" }); } },
-    );
-  };
-
   const handleEditSection = (section: LandingSectionResponse) => {
     setEditingSection(section);
     setSectionForm({
@@ -163,6 +168,7 @@ export default function LandingPage() {
       body: section.body || "",
       cta_text: section.cta_text || "",
       cta_url: section.cta_url || "",
+      image_url: section.image_url || "",
     });
   };
 
@@ -299,8 +305,8 @@ export default function LandingPage() {
           <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
         ) : !pages?.length ? (
           <EmptyState icon={Layout} title="Sin landing pages"
-            description="Crea tu primera landing page. Puedes diseñarla desde cero o usar el agente de landing desde el orquestador."
-            action={{ label: "Crear landing", onClick: () => setShowCreate(true) }} />
+            description="Usa el agente de landing desde el orquestador para generar tu primera página de venta."
+            action={{ label: "Ir al Orquestador", onClick: () => router.push("/orchestrator") }} />
         ) : (
           <div className="space-y-3">
             {pages.map((lp) => {
@@ -428,6 +434,29 @@ export default function LandingPage() {
                         </div>
                       </div>
 
+                      {/* Template selector */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground shrink-0">Template:</span>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {TEMPLATES.map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => updateLanding.mutate({ lpId: lp.id, body: { template: t.id } })}
+                              className={cn(
+                                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all",
+                                (lp.template || "modern") === t.id
+                                  ? "border-blue-400/40 bg-blue-400/10 text-blue-400 font-medium"
+                                  : "border-border text-muted-foreground hover:bg-accent"
+                              )}
+                              title={t.description}
+                            >
+                              <span>{t.emoji}</span>
+                              <span>{t.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       {sortedSections.length === 0 ? (
                         <p className="text-xs text-muted-foreground text-center py-4">
                           Sin secciones aún. Agrega secciones manualmente o usa el agente de landing.
@@ -454,6 +483,30 @@ export default function LandingPage() {
                                   <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                                     {section.body.slice(0, 80)}{section.body.length > 80 ? "..." : ""}
                                   </p>
+                                )}
+                                {section.image_url && (
+                                  <div className="mt-1">
+                                    <img
+                                      src={section.image_url}
+                                      alt=""
+                                      className="w-12 h-12 rounded-lg object-cover inline-block border border-border"
+                                    />
+                                  </div>
+                                )}
+                                {section.images && (section.images as string[]).length > 0 && (
+                                  <div className="flex gap-1 mt-1">
+                                    {(section.images as string[]).slice(0, 4).map((img, i) => (
+                                      <img
+                                        key={i}
+                                        src={img}
+                                        alt=""
+                                        className="w-10 h-10 rounded-lg object-cover border border-border"
+                                      />
+                                    ))}
+                                    {(section.images as string[]).length > 4 && (
+                                      <span className="text-[10px] text-muted-foreground self-center">+{(section.images as string[]).length - 4}</span>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                               <div className="flex items-center gap-0.5 shrink-0">
@@ -528,28 +581,6 @@ export default function LandingPage() {
         )}
       </div>
 
-      {/* ══════ Create Landing Modal ══════ */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nueva landing page">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Nombre</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required minLength={2} placeholder="e.g. Lanzamiento Producto X"
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Campaña (opcional)</label>
-            <input value={form.campaign} onChange={(e) => setForm({ ...form, campaign: e.target.value })}
-              placeholder="e.g. Black Friday 2026"
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
-          </div>
-          <button type="submit" disabled={createLanding.isPending}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
-            {createLanding.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : "Crear landing"}
-          </button>
-        </form>
-      </Modal>
-
       {/* ══════ Add Section Modal ══════ */}
       <Modal open={!!addingSectionTo} onClose={() => setAddingSectionTo(null)} title="Agregar sección" className="max-w-md">
         <div className="space-y-4">
@@ -616,6 +647,14 @@ export default function LandingPage() {
                   placeholder="https://..."
                   className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1.5">Imagen principal (URL)</label>
+              <input value={sectionForm.image_url}
+                onChange={(e) => setSectionForm({ ...sectionForm, image_url: e.target.value })}
+                placeholder="https://... o seleccionar de creativos"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
+              <CreativeSelector onSelect={(url) => setSectionForm({ ...sectionForm, image_url: url })} />
             </div>
             <button onClick={handleSaveSection} disabled={updateSection.isPending}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
@@ -738,6 +777,52 @@ export default function LandingPage() {
           </button>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+
+// ── Creative Selector Component ──────────────────────────────────────────────
+
+function CreativeSelector({ onSelect }: { onSelect: (url: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const { data: creatives } = useCreatives();
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+      >
+        📸 Seleccionar de creativos
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-1.5 border border-border rounded-lg p-3 space-y-2 bg-secondary/50">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-foreground">Creativos disponibles</span>
+        <button onClick={() => setOpen(false)} className="p-0.5 text-muted-foreground hover:text-foreground">
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+      {!creatives?.length ? (
+        <p className="text-xs text-muted-foreground">No hay creativos. Genera algunos desde el orquestador.</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto scrollbar-thin">
+          {creatives.filter((c) => c.file_url).map((c) => (
+            <img
+              key={c.id}
+              src={c.file_url!}
+              alt=""
+              className="w-full aspect-square object-cover rounded-lg border border-border cursor-pointer hover:border-violet-400 transition-colors"
+              onClick={() => { onSelect(c.file_url!); setOpen(false); }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

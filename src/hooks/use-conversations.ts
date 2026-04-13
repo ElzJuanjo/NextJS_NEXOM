@@ -83,7 +83,7 @@ export function useSendMessageStream() {
                         let simPct = event.pct;
                         intervalRef.current = setInterval(() => {
                             simPct += 2;
-                            if (simPct >= 78) {
+                            if (simPct > 78) {
                                 clearSimulation();
                                 return;
                             }

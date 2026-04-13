@@ -37,6 +37,7 @@ export const landingService = {
     status: string;
     brand_id: string | null;
     published_url: string;
+    template: string;
   }>) {
     const { data } = await apiClient.patch<LandingPageResponse>(`${BASE}/${lpId}`, body);
     return data;

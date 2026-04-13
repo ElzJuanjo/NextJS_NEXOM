@@ -128,7 +128,7 @@ export default function BrandingPage() {
         ) : !brands?.length ? (
           <EmptyState icon={Palette} title="Sin marcas aún"
             description="Crea tu primera marca para comenzar a generar identidad visual, copywriting y campañas con IA."
-            action={{ label: "Crear marca", onClick: openCreate }} />
+            action={{ label: "Ir al Orquestador", onClick: () => router.push("/orchestrator") }} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {brands.map((brand) => (

@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-copy-assets";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { CopyAssetResponse } from "@/types";
+import { useRouter } from "next/navigation";
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ function getPlatformLabel(platform: string | null) {
 // ── Page Component ──────────────────────────────────────────────────────────
 
 export default function CopywritingPage() {
+  const router = useRouter();
   const { data: brands } = useBrands();
   const { data: products } = useProducts();
 
@@ -381,12 +383,12 @@ export default function CopywritingPage() {
             description={
               activeFilterCount > 0 || searchQuery
                 ? "Prueba ajustando los filtros o el término de búsqueda."
-                : "Los copy assets se crean automáticamente al usar los agentes de Copywriting y Ads, o puedes crear uno manualmente."
+                : "Los copy assets se crean automáticamente al usar los agentes de Copywriting y Ads."
             }
             action={
               activeFilterCount > 0
                 ? { label: "Limpiar filtros", onClick: clearAllFilters }
-                : { label: "Crear copy", onClick: openCreate }
+                : { label: "Ir al Orquestador", onClick: () => router.push("/orchestrator") }
             }
           />
         ) : (

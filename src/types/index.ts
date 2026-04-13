@@ -276,6 +276,8 @@ export interface LandingSectionResponse {
   order: number;
   is_visible: boolean;
   content: Record<string, unknown> | null;
+  image_url: string | null;
+  images: string[] | null;
   created_at: string;
 }
 
@@ -288,6 +290,7 @@ export interface LandingPageResponse {
   status: string;
   published_url: string | null;
   published_at: string | null;
+  template: string | null;
   sections: LandingSectionResponse[];
   created_at: string;
 }
