@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 
-export default function Home({ searchParams }: { searchParams: { ref?: string } }) {
-  const ref = searchParams.ref;
-  if (ref) {
-    redirect(`/register?ref=${ref}`);
-  }
-  redirect("/dashboard");
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>;
+}) {
+  const { ref } = await searchParams;
+
+  redirect(ref ? `/register?ref=${ref}` : "/dashboard");
 }

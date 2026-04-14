@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { conversationService, uploadChatImage } from "@/services/conversation.service";
+import { conversationService, uploadChatImage, uploadEphemeralImage } from "@/services/conversation.service";
 import { orgKeys } from "./use-org";
 import { useState, useRef } from "react";
 import type { SendMessageResponse } from "@/types";
@@ -97,7 +97,22 @@ export function useSendMessageStream() {
                     setIsPending(false);
                     qc.invalidateQueries({ queryKey: ["conversations"] });
                     qc.invalidateQueries({ queryKey: orgKeys.usage });
-                    onSuccess(data);
+
+                    // Merge product selection data into the response message meta_data
+                    // so orchestrator/page.tsx can render ProductSelectionCard
+                    const enrichedData = { ...data };
+                    if (data.persisted_product_ids !== undefined || data.selectable_products !== undefined) {
+                        enrichedData.response = {
+                            ...data.response,
+                            meta_data: {
+                                ...(data.response?.meta_data ?? {}),
+                                persisted_product_ids: data.persisted_product_ids ?? [],
+                                selectable_products: data.selectable_products ?? [],
+                            },
+                        };
+                    }
+
+                    onSuccess(enrichedData);
                 },
                 (error) => {
                     clearSimulation();
@@ -120,5 +135,16 @@ export function useSendMessageStream() {
 export function useUploadChatImage() {
     return useMutation({
         mutationFn: uploadChatImage,
+    });
+}
+
+/**
+ * Upload efímero — para imágenes de referencia en flows / batch.
+ * No persiste en S3, devuelve data URL base64 que el agente consume
+ * solo como contexto visual (igual que el creative_batch).
+ */
+export function useUploadEphemeralImage() {
+    return useMutation({
+        mutationFn: uploadEphemeralImage,
     });
 }

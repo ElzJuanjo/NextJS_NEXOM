@@ -1,5 +1,5 @@
 import apiClient from "@/lib/api-client";
-import type { ProductResponse } from "@/types";
+import type { ProductResponse, SelectableProduct } from "@/types";
 
 const BASE = "/api/v1/products";
 
@@ -53,6 +53,14 @@ export const productService = {
     const { data } = await apiClient.post<ImportDropiResponse>(`${BASE}/import-dropi`, {
       dropi_product_id: dropiProductId,
     });
+    return data;
+  },
+
+  async persistSelected(products: SelectableProduct[]): Promise<{ created_ids: string[]; skipped_names: string[] }> {
+    const { data } = await apiClient.post<{ created_ids: string[]; skipped_names: string[] }>(
+      `${BASE}/persist-selected`,
+      { products },
+    );
     return data;
   },
 };

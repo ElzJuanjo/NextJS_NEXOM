@@ -48,13 +48,13 @@ export const flowService = {
     return data;
   },
 
-  async execute(body: { flow_id: string; context?: Record<string, unknown> }) {
+  async execute(body: { flow_id: string; context?: Record<string, unknown>; reference_image_url?: string }) {
     const { data } = await apiClient.post<ExecuteFlowResponse>(`${BASE}/execute`, body);
     return data;
   },
 
   async executeStream(
-    body: { flow_id: string; context?: Record<string, unknown> },
+    body: { flow_id: string; context?: Record<string, unknown>; reference_image_url?: string },
     onProgress: (event: { stage: string; pct: number; agent?: string; message?: string; detail?: string }) => void,
     onDone: (data: Record<string, unknown>) => void,
     onError: (error: string) => void,

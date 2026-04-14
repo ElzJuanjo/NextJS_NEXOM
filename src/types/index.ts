@@ -120,6 +120,24 @@ export interface ProductResponse {
   created_at: string;
 }
 
+// ── Product selection ─────────────────────────────────────────────
+
+export interface SelectableProduct {
+  name: string;
+  description?: string | null;
+  price_usd?: number | null;
+  image_url?: string | null;
+  source_url?: string | null;
+  source_platform?: string | null;
+  score_total: number;
+  score_breakdown?: Record<string, number> | null;
+  rating?: number | null;
+  monthly_sales?: number | null;
+  seller?: string | null;
+  reviews_count?: number | null;
+  currency?: string | null;
+}
+
 // ── Agents ──────────────────────────────────────────────────────────────────
 
 export interface AvailableAgent {
@@ -384,6 +402,10 @@ export interface SendMessageResponse {
   response: ConversationMessageResponse;
   credits_consumed: number | null;
   credits_remaining: number | null;
+  /** IDs de productos winners que se autopersistieron (solo si agent = product_search) */
+  persisted_product_ids?: string[];
+  /** Productos potenciales (score 50-74) para que el usuario elija guardar */
+  selectable_products?: SelectableProduct[];
 }
 
 export const AGENT_META: AgentMeta[] = [

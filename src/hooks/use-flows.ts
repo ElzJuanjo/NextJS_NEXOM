@@ -84,7 +84,7 @@ export function useExecuteFlowStream() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
   const execute = async (
-    body: { flow_id: string; context?: Record<string, unknown> },
+    body: { flow_id: string; context?: Record<string, unknown>; reference_image_url?: string },
     onSuccess?: (data: Record<string, unknown>) => void,
   ) => {
     setIsPending(true);

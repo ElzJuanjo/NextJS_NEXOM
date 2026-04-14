@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productService } from "@/services/product.service";
+import type { SelectableProduct } from "@/types";
 import toast from "react-hot-toast";
 
 export const productKeys = {
@@ -63,5 +64,26 @@ export function useImportFromDropi() {
       );
     },
     onError: (err: Error) => toast.error(err.message),
+  });
+}
+export function usePersistSelectedProducts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (products: SelectableProduct[]) => productService.persistSelected(products),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: productKeys.list });
+      const saved = data.created_ids.length;
+      const skipped = data.skipped_names.length;
+      if (saved > 0) {
+        toast.success(
+          skipped > 0
+            ? `${saved} producto${saved !== 1 ? "s" : ""} guardado${saved !== 1 ? "s" : ""} (${skipped} ya existían)`
+            : `${saved} producto${saved !== 1 ? "s" : ""} guardado${saved !== 1 ? "s" : ""} en tu catálogo`
+        );
+      } else if (skipped > 0) {
+        toast("Todos los productos ya estaban en tu catálogo", { icon: "ℹ️" });
+      }
+    },
+    onError: (err: Error) => toast.error(err.message || "Error al guardar productos"),
   });
 }

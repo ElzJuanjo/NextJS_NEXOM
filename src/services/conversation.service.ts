@@ -87,12 +87,29 @@ export const conversationService = {
 };
 
 
-export async function uploadChatImage(file: File): Promise<{ url: string; filename: string; content_type: string; size: number }> {
+export async function uploadChatImage(file: File): Promise<{ url: string; filename: string; content_type: string; size: number; ephemeral?: boolean }> {
   const formData = new FormData();
   formData.append("file", file);
 
   const { data } = await apiClient.post("/api/v1/uploads/image", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  return data;
+}
+
+/**
+ * Upload efímero — no toca S3, retorna data URL base64.
+ * Para imágenes de referencia transitorias (flows, batch) que se usan
+ * solo como contexto visual y NO deben quedar en el bucket.
+ */
+export async function uploadEphemeralImage(file: File): Promise<{ url: string; filename: string; content_type: string; size: number; ephemeral: boolean }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { data } = await apiClient.post("/api/v1/uploads/image", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    params: { ephemeral: true },
   });
 
   return data;

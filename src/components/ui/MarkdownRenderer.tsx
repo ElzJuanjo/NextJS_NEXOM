@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useMemo, useCallback, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -192,6 +192,25 @@ function parseLangFromClassName(className?: string): string {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
+// ─── Internal JSON block stripper ───────────────────────────────────
+// Los agentes emiten bloques <!--XXX_JSON ...--> al final de sus respuestas
+// para auto-persistencia interna. El backend ya los sanitiza, pero este
+// renderer aplica una segunda capa defensiva por dos razones:
+//   1. Mensajes viejos en BD que se guardaron antes del fix del sanitizer.
+//   2. remark-gfm convierte "-->" en "⟶" y rompe el comentario para el
+//      navegador, dejando el JSON visible como texto plano.
+// Cubre tanto bloques bien cerrados como bloques abiertos sin cierre.
+const INTERNAL_JSON_BLOCK = /\s*<!--\s*(?:BRAND_JSON|COPY_JSON|LANDING_JSON|PRODUCT_JSON|SELECTABLE_PRODUCTS_JSON)\s*[\[{][\s\S]*?[\]}]\s*-->\s*/g;
+const INTERNAL_JSON_OPEN_NO_CLOSE = /\s*<!--\s*(?:BRAND_JSON|COPY_JSON|LANDING_JSON|PRODUCT_JSON|SELECTABLE_PRODUCTS_JSON)\b[\s\S]*$/;
+
+function stripInternalJson(content: string): string {
+    if (!content || !content.includes("<!--")) return content;
+    return content
+        .replace(INTERNAL_JSON_BLOCK, "")
+        .replace(INTERNAL_JSON_OPEN_NO_CLOSE, "")
+        .trimEnd();
+}
+
 interface MarkdownRendererProps {
     content: string;
     /** Optional: compact mode reduces spacing for chat-like UIs */
@@ -199,6 +218,8 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ content, compact = false }: MarkdownRendererProps) {
+    const cleanedContent = useMemo(() => stripInternalJson(content), [content]);
+
     const spacing = compact
         ? { p: "mb-2", h1mt: "mt-3", h2mt: "mt-3", h3mt: "mt-2", listMb: "mb-2", blockquoteMy: "my-2", codeMy: "my-2" }
         : { p: "mb-3", h1mt: "mt-6", h2mt: "mt-5", h3mt: "mt-4", listMb: "mb-3", blockquoteMy: "my-3", codeMy: "my-3" };
@@ -463,7 +484,7 @@ export function MarkdownRenderer({ content, compact = false }: MarkdownRendererP
                     },
                 }}
             >
-                {content}
+                {cleanedContent}
             </ReactMarkdown>
         </div>
     );

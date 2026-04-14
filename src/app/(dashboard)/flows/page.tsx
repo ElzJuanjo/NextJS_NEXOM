@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Workflow, Play, Trash2, Zap, ChevronDown, ChevronRight, ChevronUp, CheckCircle2, AlertCircle, Loader2, X, ArrowRight } from "lucide-react";
+import { useState, useRef } from "react";
+import { Workflow, Play, Trash2, Zap, ChevronDown, ChevronRight, ChevronUp, CheckCircle2, AlertCircle, Loader2, X, ArrowRight, ImagePlus } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/empty-states/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { ProductSelectionCard } from "@/components/ui/ProductSelectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
@@ -14,8 +15,9 @@ import {
   useFlows, useFlowTemplates, useCreateFlow, useDeleteFlow,
   useExecuteFlowStream, useCreateFromTemplate,
 } from "@/hooks/use-flows";
+import { useUploadEphemeralImage } from "@/hooks/use-conversations";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import { AGENT_META } from "@/types";
+import { AGENT_META, type SelectableProduct } from "@/types";
 
 export default function FlowsPage() {
   const router = useRouter();
@@ -37,6 +39,12 @@ export default function FlowsPage() {
     brand: "", product: "", niche: "", market: "", audience: "", tone: "",
   });
 
+  // ── Reference image for flows ──
+  const [referenceImage, setReferenceImage] = useState<{ file: File; preview: string; s3Url?: string } | null>(null);
+  const [isUploadingRef, setIsUploadingRef] = useState(false);
+  const uploadRefImage = useUploadEphemeralImage();
+  const refFileInputRef = useRef<HTMLInputElement>(null);
+
   const toggleFlow = (id: string) => {
     setExpandedFlows((prev) => {
       const next = new Set(prev);
@@ -55,10 +63,18 @@ export default function FlowsPage() {
     if (contextForm.tone) ctx.tone = contextForm.tone;
 
     executeFlowStream(
-      { flow_id: flowId, context: Object.keys(ctx).length > 0 ? ctx : undefined },
+      {
+        flow_id: flowId,
+        context: Object.keys(ctx).length > 0 ? ctx : undefined,
+        reference_image_url: referenceImage?.s3Url,
+      },
       () => {
         setShowExecute(null);
         setShowResult(true);
+        if (referenceImage) {
+          URL.revokeObjectURL(referenceImage.preview);
+          setReferenceImage(null);
+        }
       },
     );
   };
@@ -285,9 +301,81 @@ export default function FlowsPage() {
               </div>
             )}
 
+            {/* ── Reference image uploader ── */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">
+                Imagen de referencia <span className="text-muted-foreground/60">(opcional)</span>
+              </label>
+              <input
+                ref={refFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={flowRunning}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (!file.type.startsWith("image/")) return;
+                  const preview = URL.createObjectURL(file);
+                  setReferenceImage({ file, preview });
+                  setIsUploadingRef(true);
+                  try {
+                    const result = await uploadRefImage.mutateAsync(file);
+                    setReferenceImage((prev) =>
+                      prev ? { ...prev, s3Url: result.url } : null
+                    );
+                  } catch {
+                    setReferenceImage(null);
+                  } finally {
+                    setIsUploadingRef(false);
+                    if (e.target) e.target.value = "";
+                  }
+                }}
+              />
+              {!referenceImage ? (
+                <button
+                  type="button"
+                  onClick={() => refFileInputRef.current?.click()}
+                  disabled={flowRunning}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-border hover:border-violet-400/50 hover:bg-accent/30 transition-all text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                  Subir imagen de referencia
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-accent/20">
+                  <img
+                    src={referenceImage.preview}
+                    alt="Referencia"
+                    className="w-12 h-12 rounded object-cover border border-border shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground font-medium truncate">{referenceImage.file.name}</p>
+                    {isUploadingRef ? (
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" /> Subiendo...
+                      </p>
+                    ) : referenceImage.s3Url ? (
+                      <p className="text-[10px] text-emerald-400">✓ Lista para usar en el flow</p>
+                    ) : null}
+                  </div>
+                  <button
+                    onClick={() => {
+                      URL.revokeObjectURL(referenceImage.preview);
+                      setReferenceImage(null);
+                    }}
+                    disabled={flowRunning}
+                    className="p-1 rounded hover:bg-accent shrink-0 disabled:opacity-40"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => handleExecute(showExecute)}
-              disabled={flowRunning}
+              disabled={flowRunning || isUploadingRef}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60"
             >
               {flowRunning ? (
@@ -309,7 +397,15 @@ export default function FlowsPage() {
             total_steps: number;
             credits_consumed: number;
             conversation_id: string | null;
-            step_results: Record<string, { agent_type: string; status: string; content_preview: string; duration_ms: number; error: string | null }>;
+            step_results: Record<string, {
+              agent_type: string;
+              status: string;
+              content_preview: string;
+              duration_ms: number;
+              error: string | null;
+              persisted_product_ids?: string[];
+              selectable_products?: SelectableProduct[];
+            }>;
           };
 
           return (
@@ -345,6 +441,19 @@ export default function FlowsPage() {
                           {(step.duration_ms / 1000).toFixed(1)}s
                         </span>
                       </div>
+
+                      {/* selector de productos potenciales en flows */}
+                      {step.agent_type === "product_search" &&
+                        ((step.persisted_product_ids?.length ?? 0) > 0 ||
+                          (step.selectable_products?.length ?? 0) > 0) && (
+                          <div className="px-4 pb-3">
+                            <ProductSelectionCard
+                              messageId={stepId}
+                              persistedProductIds={step.persisted_product_ids ?? []}
+                              selectableProducts={step.selectable_products ?? []}
+                            />
+                          </div>
+                        )}
                     </div>
                   );
                 })}

@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { ProductSelectionCard } from "@/components/ui/ProductSelectionCard";
 import { useConversations, useConversation, useSendMessageStream, useDeleteConversation, useUpdateConversation, useUploadChatImage } from "@/hooks/use-conversations";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import { AGENT_META, type ConversationMessageResponse } from "@/types";
+import { AGENT_META, type ConversationMessageResponse, type SelectableProduct } from "@/types";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useMe } from "@/hooks/use-auth";
@@ -239,6 +240,17 @@ export default function OrchestratorPage() {
                       ) : (
                         <>
                           <MarkdownRenderer content={msg.content} />
+                          {msg.agent_type === "product_search" && (
+                            <ProductSelectionCard
+                              messageId={msg.id}
+                              persistedProductIds={
+                                (msgMeta?.persisted_product_ids as string[] | undefined) ?? []
+                              }
+                              selectableProducts={
+                                (msgMeta?.selectable_products as SelectableProduct[] | undefined) ?? []
+                              }
+                            />
+                          )}
                           {msg.content.includes("⚠️ *Response truncated") && (
                             <button
                               onClick={() => {
