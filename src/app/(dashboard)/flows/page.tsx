@@ -17,7 +17,8 @@ import {
 } from "@/hooks/use-flows";
 import { useUploadEphemeralImage } from "@/hooks/use-conversations";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import { AGENT_META, type SelectableProduct } from "@/types";
+import { AGENT_META, type CandidateProduct } from "@/types";
+import toast from "react-hot-toast";
 
 export default function FlowsPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function FlowsPage() {
   const createFlow = useCreateFlow();
   const deleteFlow = useDeleteFlow();
   const createFromTemplate = useCreateFromTemplate();
-  const { execute: executeFlowStream, progress, stepStatuses, isPending: flowRunning, result: flowResult, reset: resetFlow } = useExecuteFlowStream();
+  const { execute: executeFlowStream, resumeWithSelection, progress, stepStatuses, isPending: flowRunning, result: flowResult, reset: resetFlow } = useExecuteFlowStream();
 
   const [showCreate, setShowCreate] = useState(false);
   const [showExecute, setShowExecute] = useState<string | null>(null);
@@ -392,7 +393,12 @@ export default function FlowsPage() {
       <Modal open={showResult && !!flowResult} onClose={() => { setShowResult(false); resetFlow(); }} title="Flow Results" className="max-w-2xl">
         {flowResult && (() => {
           const fr = flowResult as {
+            flow_id: string;
             status: string;
+            paused?: boolean;
+            pause_reason?: string;
+            pause_step_id?: string;
+            candidate_products?: CandidateProduct[];
             completed_steps: number;
             total_steps: number;
             credits_consumed: number;
@@ -403,10 +409,61 @@ export default function FlowsPage() {
               content_preview: string;
               duration_ms: number;
               error: string | null;
-              persisted_product_ids?: string[];
-              selectable_products?: SelectableProduct[];
+              candidate_products?: CandidateProduct[];
             }>;
           };
+
+          // ── Estado pausado: mostrar selector de productos ──
+          if (fr.paused && fr.candidate_products && fr.candidate_products.length > 0) {
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <StatusBadge status="paused" />
+                  <span className="text-xs text-muted-foreground">
+                    {fr.completed_steps}/{fr.total_steps} pasos ejecutados — esperando tu selección
+                  </span>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  El agente <span className="text-emerald-400 font-medium">product_search</span> encontró{" "}
+                  <span className="text-foreground font-medium">{fr.candidate_products.length}</span>{" "}
+                  productos. Elige cuáles quieres guardar y con cuáles continuar el resto del flow.
+                </p>
+
+                <ProductSelectionCard
+                  messageId={fr.flow_id}
+                  candidateProducts={fr.candidate_products}
+                  flowMode
+                  isConfirming={flowRunning}
+                  onSelectionConfirmed={async (picked) => {
+                    await resumeWithSelection(fr.flow_id, picked);
+                  }}
+                  onCancel={() => {
+                    // Cancelar = cerrar modal, el flow queda en estado paused
+                    // y el usuario puede retomarlo más tarde desde la lista de flows.
+                    toast("Flow pausado guardado. Puedes retomarlo cuando quieras.", { icon: "💾" });
+                    setShowResult(false);
+                    resetFlow();
+                  }}
+                />
+              </div>
+            );
+          }
+
+          // ── Estado pausado SIN candidatos: edge case ──
+          if (fr.paused && (!fr.candidate_products || fr.candidate_products.length === 0)) {
+            return (
+              <div className="space-y-3">
+                <StatusBadge status="paused" />
+                <p className="text-sm text-amber-300">
+                  El flow se pausó tras product_search pero no se encontraron productos
+                  candidatos. Esto puede pasar si el scraping no devolvió resultados o
+                  si el agente no logró clasificar ninguno. Revisa los parámetros de
+                  búsqueda y vuelve a ejecutar el flow.
+                </p>
+              </div>
+            );
+          }
 
           return (
             <div className="space-y-4">
@@ -442,15 +499,13 @@ export default function FlowsPage() {
                         </span>
                       </div>
 
-                      {/* selector de productos potenciales en flows */}
+                      {/* Selector de productos para flows ya completados (legacy view) */}
                       {step.agent_type === "product_search" &&
-                        ((step.persisted_product_ids?.length ?? 0) > 0 ||
-                          (step.selectable_products?.length ?? 0) > 0) && (
+                        (step.candidate_products?.length ?? 0) > 0 && (
                           <div className="px-4 pb-3">
                             <ProductSelectionCard
                               messageId={stepId}
-                              persistedProductIds={step.persisted_product_ids ?? []}
-                              selectableProducts={step.selectable_products ?? []}
+                              candidateProducts={step.candidate_products ?? []}
                             />
                           </div>
                         )}

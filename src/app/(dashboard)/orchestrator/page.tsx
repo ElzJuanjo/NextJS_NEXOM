@@ -11,7 +11,7 @@ import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { ProductSelectionCard } from "@/components/ui/ProductSelectionCard";
 import { useConversations, useConversation, useSendMessageStream, useDeleteConversation, useUpdateConversation, useUploadChatImage } from "@/hooks/use-conversations";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import { AGENT_META, type ConversationMessageResponse, type SelectableProduct } from "@/types";
+import { AGENT_META, type ConversationMessageResponse, type CandidateProduct } from "@/types";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useMe } from "@/hooks/use-auth";
@@ -243,11 +243,8 @@ export default function OrchestratorPage() {
                           {msg.agent_type === "product_search" && (
                             <ProductSelectionCard
                               messageId={msg.id}
-                              persistedProductIds={
-                                (msgMeta?.persisted_product_ids as string[] | undefined) ?? []
-                              }
-                              selectableProducts={
-                                (msgMeta?.selectable_products as SelectableProduct[] | undefined) ?? []
+                              candidateProducts={
+                                (msgMeta?.candidate_products as CandidateProduct[] | undefined) ?? []
                               }
                             />
                           )}

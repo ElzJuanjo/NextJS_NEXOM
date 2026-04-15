@@ -17,7 +17,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { ProductResponse } from "@/types";
 import { useCreatives } from "@/hooks/use-creatives";
 
-// ── Types para extra_data de productos auto-persistidos ────────────────────
+// ── Types para extra_data de productos persistidos por el agente ───────────
 
 interface ProductScoreBreakdown {
   ventas: number;
@@ -27,9 +27,12 @@ interface ProductScoreBreakdown {
   rating: number;
 }
 
-interface AutoPersistedData {
-  auto_persisted: true;
+/** Bucket de clasificación según score del agente product_search. */
+type ProductBucket = "winner" | "potential" | "rejected" | "dropi";
+
+interface ScoredProductData {
   source: string;
+  bucket?: ProductBucket;
   score_total: number;
   score_breakdown: ProductScoreBreakdown;
   source_platform: string;
@@ -41,13 +44,28 @@ interface AutoPersistedData {
   currency: string;
 }
 
-function isAutoPersisted(product: ProductResponse): product is ProductResponse & { extra_data: AutoPersistedData } {
-  return product.extra_data?.auto_persisted === true;
+function getProductBucket(product: ProductResponse): ProductBucket | undefined {
+  const ed = product.extra_data as Partial<ScoredProductData> & { auto_persisted?: boolean } | null;
+  if (!ed) return undefined;
+  if (ed.bucket) return ed.bucket as ProductBucket;
+  // Legacy path
+  if (ed.auto_persisted && typeof ed.score_total === "number") {
+    if (ed.source === "dropi_import") return "dropi";
+    if (ed.score_total >= 75) return "winner";
+    if (ed.score_total >= 50) return "potential";
+    return "rejected";
+  }
+  return undefined;
+}
+
+function hasScoredData(product: ProductResponse): product is ProductResponse & { extra_data: ScoredProductData } {
+  const ed = product.extra_data as Partial<ScoredProductData> | null;
+  return !!ed && typeof ed.score_total === "number";
 }
 
 // ── Filter type ────────────────────────────────────────────────────────────
 
-type ProductFilter = "all" | "winners" | "manual";
+type ProductFilter = "all" | "winner" | "potential" | "rejected" | "dropi" | "manual";
 
 // ── Score ring component ───────────────────────────────────────────────────
 
@@ -293,7 +311,7 @@ function ProductDetailModal({
 }) {
   if (!product) return null;
 
-  const auto = isAutoPersisted(product) ? (product.extra_data as AutoPersistedData) : null;
+  const auto = hasScoredData(product) ? (product.extra_data as ScoredProductData) : null;
 
   return (
     <Modal open={open} onClose={onClose} title={product.name} className="max-w-lg">
@@ -578,15 +596,38 @@ export default function ProductsPage() {
   const filtered = (products ?? []).filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
-    if (filter === "winners") return isAutoPersisted(p);
-    if (filter === "manual") return !isAutoPersisted(p);
-    return true;
+    if (filter === "all") return true;
+    const bucket = getProductBucket(p);
+    if (filter === "manual") return bucket === undefined;
+    return bucket === filter;
   });
 
-  // Stats
+  // Stats por bucket
   const totalProducts = products?.length ?? 0;
-  const winnerCount = products?.filter(isAutoPersisted).length ?? 0;
-  const manualCount = totalProducts - winnerCount;
+  const bucketCounts = (products ?? []).reduce(
+    (acc, p) => {
+      const b = getProductBucket(p);
+      if (b) acc[b] = (acc[b] || 0) + 1;
+      else acc.manual = (acc.manual || 0) + 1;
+      return acc;
+    },
+    { winner: 0, potential: 0, rejected: 0, dropi: 0, manual: 0 } as Record<string, number>,
+  );
+
+  // Filtros disponibles, en orden y con metadata visual
+  const FILTER_BUTTONS: Array<{
+    id: ProductFilter;
+    label: string;
+    count: number;
+    icon: typeof Trophy;
+    activeClass: string;
+  }> = [
+    { id: "winner",    label: "Winners",    count: bucketCounts.winner,    icon: Trophy,      activeClass: "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" },
+    { id: "potential", label: "Potenciales", count: bucketCounts.potential, icon: TrendingUp,  activeClass: "bg-amber-400/10 text-amber-400 border-amber-400/30" },
+    { id: "rejected",  label: "Rejected",   count: bucketCounts.rejected,  icon: BarChart3,   activeClass: "bg-red-400/10 text-red-400 border-red-400/30" },
+    { id: "dropi",     label: "Dropi",      count: bucketCounts.dropi,     icon: Truck,       activeClass: "bg-cyan-400/10 text-cyan-400 border-cyan-400/30" },
+    { id: "manual",    label: "Manuales",   count: bucketCounts.manual,    icon: Plus,        activeClass: "bg-violet-400/10 text-violet-400 border-violet-400/30" },
+  ];
 
   return (
     <div className="flex flex-col h-full">
@@ -608,7 +649,7 @@ export default function ProductsPage() {
               className="w-full max-w-sm px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
             />
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
               <button
                 onClick={() => setFilter("all")}
                 className={cn(
@@ -621,34 +662,24 @@ export default function ProductsPage() {
                 <Package className="w-3 h-3" />
                 Todos ({totalProducts})
               </button>
-              {winnerCount > 0 && (
-                <button
-                  onClick={() => setFilter("winners")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                    filter === "winners"
-                      ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
-                      : "text-muted-foreground border-border hover:text-foreground hover:bg-accent"
-                  )}
-                >
-                  <Trophy className="w-3 h-3" />
-                  Winners ({winnerCount})
-                </button>
-              )}
-              {manualCount > 0 && winnerCount > 0 && (
-                <button
-                  onClick={() => setFilter("manual")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                    filter === "manual"
-                      ? "bg-violet-400/10 text-violet-400 border-violet-400/30"
-                      : "text-muted-foreground border-border hover:text-foreground hover:bg-accent"
-                  )}
-                >
-                  <Plus className="w-3 h-3" />
-                  Manuales ({manualCount})
-                </button>
-              )}
+              {FILTER_BUTTONS.filter((b) => b.count > 0).map((btn) => {
+                const Icon = btn.icon;
+                return (
+                  <button
+                    key={btn.id}
+                    onClick={() => setFilter(btn.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                      filter === btn.id
+                        ? btn.activeClass
+                        : "text-muted-foreground border-border hover:text-foreground hover:bg-accent"
+                    )}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {btn.label} ({btn.count})
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -672,7 +703,7 @@ export default function ProductsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((product) => {
               const brand = brands?.find((b) => b.id === product.brand_id);
-              const auto = isAutoPersisted(product) ? (product.extra_data as AutoPersistedData) : null;
+              const auto = hasScoredData(product) ? (product.extra_data as ScoredProductData) : null;
 
               return (
                 <div

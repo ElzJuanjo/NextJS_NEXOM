@@ -122,7 +122,9 @@ export interface ProductResponse {
 
 // ── Product selection ─────────────────────────────────────────────
 
-export interface SelectableProduct {
+export type ProductBucket = "winner" | "potential" | "rejected";
+
+export interface CandidateProduct {
   name: string;
   description?: string | null;
   price_usd?: number | null;
@@ -131,6 +133,7 @@ export interface SelectableProduct {
   source_platform?: string | null;
   score_total: number;
   score_breakdown?: Record<string, number> | null;
+  bucket?: ProductBucket | null;
   rating?: number | null;
   monthly_sales?: number | null;
   seller?: string | null;
@@ -402,10 +405,7 @@ export interface SendMessageResponse {
   response: ConversationMessageResponse;
   credits_consumed: number | null;
   credits_remaining: number | null;
-  /** IDs de productos winners que se autopersistieron (solo si agent = product_search) */
-  persisted_product_ids?: string[];
-  /** Productos potenciales (score 50-74) para que el usuario elija guardar */
-  selectable_products?: SelectableProduct[];
+  candidate_products?: CandidateProduct[];
 }
 
 export const AGENT_META: AgentMeta[] = [

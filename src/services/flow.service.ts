@@ -1,6 +1,9 @@
 import apiClient from "@/lib/api-client";
 import { getAccessToken } from "@/lib/api-client";
-import type { FlowResponse, FlowStepResponse, ExecuteFlowResponse, FlowTemplateInfo } from "@/types";
+import type {
+  FlowResponse, FlowStepResponse, ExecuteFlowResponse, FlowTemplateInfo,
+  CandidateProduct,
+} from "@/types";
 
 const BASE = "/api/v1/flows";
 
@@ -115,6 +118,17 @@ export const flowService = {
         }
       }
     }
+  },
+
+  async resumeWithSelection(
+    flowId: string,
+    selected: CandidateProduct[],
+  ): Promise<Record<string, unknown>> {
+    const { data } = await apiClient.post<Record<string, unknown>>(
+      `${BASE}/${flowId}/resume-with-selection`,
+      { selected_products: selected },
+    );
+    return data;
   },
 
   // Templates

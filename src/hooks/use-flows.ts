@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { flowService } from "@/services/flow.service";
 import { showProgressToast, dismissProgressToast } from "@/components/ui/ProgressToast";
 import toast from "react-hot-toast";
+import type { CandidateProduct } from "@/types";
 
 export const flowKeys = {
   list: ["flows"] as const,
@@ -107,6 +108,7 @@ export function useExecuteFlowStream() {
                 status: event.stage === "step_started" ? "running"
                   : event.stage === "step_completed" ? "completed"
                   : event.stage === "step_error" ? "error"
+                  : event.stage === "awaiting_selection" ? "completed"
                   : "running",
                 message: event.message || "",
                 detail: event.detail,
@@ -114,7 +116,6 @@ export function useExecuteFlowStream() {
             }));
           }
 
-          // Global toast
           showProgressToast({
             id: "flow-progress",
             message: event.message || "Processing...",
@@ -129,7 +130,18 @@ export function useExecuteFlowStream() {
           setResult(data);
           qc.invalidateQueries({ queryKey: flowKeys.list });
           qc.invalidateQueries({ queryKey: ["org", "usage"] });
-          toast.success("Flow completed!");
+
+          // ── Diferenciar pausa vs completado ──
+          if (data?.paused === true || data?.status === "paused") {
+            toast(
+              "Flow pausado: selecciona los productos para continuar",
+              { icon: "⏸️" },
+            );
+          } else if (data?.status === "error") {
+            toast.error(typeof data.error === "string" ? data.error : "Flow error");
+          } else {
+            toast.success("Flow completed!");
+          }
           onSuccess?.(data);
         },
         (error) => {
@@ -154,7 +166,35 @@ export function useExecuteFlowStream() {
     setResult(null);
   };
 
-  return { execute, progress, stepStatuses, isPending, result, reset };
+  /** Reanuda el flow pausado con la selección del usuario.
+   *  Reusa el state de result para que la UI se actualice in-place. */
+  const resumeWithSelection = async (
+    flowId: string,
+    selected: CandidateProduct[],
+    onSuccess?: (data: Record<string, unknown>) => void,
+  ) => {
+    setIsPending(true);
+    try {
+      const data = await flowService.resumeWithSelection(flowId, selected);
+      setResult(data);
+      qc.invalidateQueries({ queryKey: flowKeys.list });
+      qc.invalidateQueries({ queryKey: ["org", "usage"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
+      if (data?.status === "error") {
+        toast.error(typeof data.error === "string" ? data.error : "Flow resume error");
+      } else {
+        toast.success(`Flow completado: ${data.completed_steps ?? "?"}/${data.total_steps ?? "?"} pasos`);
+      }
+      onSuccess?.(data);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error reanudando flow";
+      toast.error(msg);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { execute, resumeWithSelection, progress, stepStatuses, isPending, result, reset };
 }
 
 export function useCreateFromTemplate() {
