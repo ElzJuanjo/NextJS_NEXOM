@@ -114,10 +114,10 @@ export default function DashboardPage() {
             <div className="flex items-start gap-3 flex-1 min-w-0">
               <Mail className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">Verify your email</p>
+                <p className="text-sm font-medium text-foreground">Verifica tu correo</p>
                 <p className="text-xs text-muted-foreground break-words">
-                  We sent a verification link to <span className="text-foreground">{verificationStatus.email}</span>.
-                  The link expires in {verificationStatus.verification_expires_hours}h.
+                  Hemos enviado un enlace de verificación a <span className="text-foreground">{verificationStatus.email}</span>.
+                  El link expira en {verificationStatus.verification_expires_hours}h.
                 </p>
               </div>
             </div>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
               disabled={resendVerification.isPending || resendCooldown > 0}
               className="px-3 py-1.5 rounded-lg bg-amber-400/20 text-amber-400 text-xs font-medium hover:bg-amber-400/30 transition-colors shrink-0 disabled:opacity-50"
             >
-              {resendVerification.isPending ? "Sending..." : resendCooldown > 0 ? `Wait ${formatCooldown(resendCooldown)}` : "Resend email"}
+              {resendVerification.isPending ? "Sending..." : resendCooldown > 0 ? `Wait ${formatCooldown(resendCooldown)}` : "Reenviar"}
             </button>
           </div>
         )}

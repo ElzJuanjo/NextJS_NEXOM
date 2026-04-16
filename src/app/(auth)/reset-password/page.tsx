@@ -23,9 +23,9 @@ export default function ResetPasswordPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (password.length < 8) { toast.error("Mínimo 8 caracteres"); return; }
-        if (password !== confirm) { toast.error("Las contraseñas no coinciden"); return; }
-        if (!token) { toast.error("Token inválido. Solicita un nuevo enlace."); return; }
+        if (password.length < 8) { toast.error("Minimum 8 characters"); return; }
+        if (password !== confirm) { toast.error("Passwords do not match"); return; }
+        if (!token) { toast.error("Invalid token. Please request a new link."); return; }
         resetPw.mutate({ token, new_password: password }, { onSuccess: () => setDone(true) });
     };
 
@@ -34,10 +34,10 @@ export default function ResetPasswordPage() {
             <div className="flex flex-col items-center mb-8">
                 <Logo size={64} className="mb-4" fit="contain" />
                 <h1 className="text-2xl font-bold text-foreground tracking-tight">
-                    {done ? "¡Listo!" : "Nueva contraseña"}
+                    {done ? "All done!" : "New password"}
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                    {done ? "Tu contraseña ha sido restablecida" : "Escribe tu nueva contraseña"}
+                    {done ? "Your password has been reset" : "Enter your new password"}
                 </p>
             </div>
 
@@ -51,24 +51,24 @@ export default function ResetPasswordPage() {
                 {done ? (
                     <div className="text-center space-y-4">
                         <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-                        <p className="text-sm text-muted-foreground">Ya puedes iniciar sesión con tu nueva contraseña.</p>
+                        <p className="text-sm text-muted-foreground">You can now sign in with your new password.</p>
                         <Link
                             href="/login"
                             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all"
                         >
-                            Ir al login <ArrowRight className="w-4 h-4" />
+                            Go to login <ArrowRight className="w-4 h-4" />
                         </Link>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium text-foreground block mb-1.5">Nueva contraseña</label>
+                            <label className="text-sm font-medium text-foreground block mb-1.5">New password</label>
                             <div className="relative">
                                 <input
                                     type={showPw ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Mín. 8 caracteres"
+                                    placeholder="Min. 8 characters"
                                     required
                                     minLength={8}
                                     className="w-full px-3 py-2.5 pr-10 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
@@ -83,12 +83,12 @@ export default function ResetPasswordPage() {
                             </div>
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-foreground block mb-1.5">Confirmar contraseña</label>
+                            <label className="text-sm font-medium text-foreground block mb-1.5">Confirm password</label>
                             <input
                                 type="password"
                                 value={confirm}
                                 onChange={(e) => setConfirm(e.target.value)}
-                                placeholder="Repite tu contraseña"
+                                placeholder="Re-enter your password"
                                 required
                                 minLength={8}
                                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
                             disabled={resetPw.isPending}
                             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60"
                         >
-                            {resetPw.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : "Restablecer contraseña"}
+                            {resetPw.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : "Reset password"}
                         </button>
                     </form>
                 )}

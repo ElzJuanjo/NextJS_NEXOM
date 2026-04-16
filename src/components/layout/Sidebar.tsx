@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useMe, useLogout } from "@/hooks/use-auth";
 import { Logo } from "@/components/ui/Logo";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
 type NavItem =
   | { type: "link"; label: string; href: string; icon: LucideIcon; color: string; activeBg: string }
@@ -113,6 +114,8 @@ function NavContent({
       </nav>
 
       <div className="px-2 py-3 border-t border-border space-y-1 shrink-0">
+        <LanguageSelector collapsed={!sidebarOpen} />
+
         <button
           title={!sidebarOpen ? "Ayuda" : undefined}
           className={cn(

@@ -100,3 +100,123 @@
     background-size: 200% 100%;
   }
 }
+
+/* ============================================================
+   Bloqueo de UI de Google Translate
+   Oculta la barra superior "Traducido al: inglés" y el popup
+   "Texto original / Valora esta traducción" que inyecta Chrome
+   al traducir la página. La traducción sigue funcionando normal,
+   solo se oculta el chrome visual.
+   ============================================================ */
+
+/* Barra superior (iframe inyectado por Chrome/Google Translate) */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+iframe.goog-te-banner-frame,
+iframe.skiptranslate,
+.goog-te-balloon-frame,
+body>.skiptranslate {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+}
+
+/* Tooltip "Texto original / Valora esta traducción" */
+#goog-gt-tt,
+.goog-tooltip,
+.goog-tooltip:hover {
+  display: none !important;
+  visibility: hidden !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* Evita que Chrome empuje el <body> hacia abajo para mostrar la barra */
+body {
+  top: 0 !important;
+  position: static !important;
+}
+
+html {
+  margin-top: 0 !important;
+}
+
+/* ============================================================
+   Neutraliza el resaltado gris/morado/amarillo que Google
+   aplica al pasar el cursor sobre el texto traducido.
+   Google inyecta <font> tags con estilos inline; hay que
+   neutralizarlos sin usar display:none (eso oculta el texto).
+   ============================================================ */
+.goog-text-highlight,
+font.goog-text-highlight {
+  background: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  text-shadow: none !important;
+}
+
+/* Cubre los <font> con estilos inline de background (fallback) */
+font[style*="background"],
+font[style*="box-shadow"] {
+  background: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* ============================================================
+   Chrome moderno usa clases dinámicas tipo VIpgJd-* para el
+   highlight del cursor. Atacamos SOLO el recuadro de hover
+   (box-shadow/border/outline) sin tocar el background ni el
+   color, para no romper textos con gradientes aplicados via
+   background-clip: text (-webkit-text-fill-color: transparent).
+   ============================================================ */
+font[class*="VIpgJd"],
+font[class*="VIpgJd"]:hover,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q,
+[class*="VIpgJd-yAWNEb"],
+[class*="VIpgJd-fmcmS"] {
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  text-decoration: none !important;
+  text-shadow: none !important;
+}
+
+/* Hereda el background del padre (evita romper gradientes sobre texto) */
+font[class*="VIpgJd"] {
+  background: inherit !important;
+  color: inherit !important;
+  -webkit-background-clip: inherit !important;
+  background-clip: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+/* ============================================================
+   Fix para textos con gradiente (.gradient-text):
+   Google envuelve el texto en <font> anidados, lo que rompe
+   background-clip: text (solo funciona en descendientes directos).
+   Re-aplicamos el gradiente violet-400 → indigo-400 de Tailwind
+   a CUALQUIER <font> que Google inyecte dentro de .gradient-text.
+   ============================================================ */
+.gradient-text,
+.gradient-text font,
+.gradient-text font font {
+  background-image: linear-gradient(to right, #a78bfa, #818cf8) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}

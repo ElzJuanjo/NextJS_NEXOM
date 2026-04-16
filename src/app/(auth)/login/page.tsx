@@ -13,8 +13,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Logo } from "@/components/ui/Logo";
 
 const schema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Mínimo 6 caracteres"),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(6, "Minimum 6 characters"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -60,10 +60,10 @@ export default function LoginPage() {
       <div className="flex flex-col items-center mb-8">
         <Logo size={64} className="mb-4" fit="contain" />
         <h1 className="text-2xl font-bold text-foreground tracking-tight">
-          {twoFAStep ? "Verificación 2FA" : "Bienvenido de vuelta"}
+          {twoFAStep ? "2FA Verification" : "Welcome back"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {twoFAStep ? "Ingresa el código de tu app de autenticación" : "Inicia sesión en tu workspace"}
+          {twoFAStep ? "Enter the code from your authenticator app" : "Sign in to your workspace"}
         </p>
       </div>
 
@@ -89,7 +89,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1.5">Código de verificación</label>
+              <label className="text-sm font-medium text-foreground block mb-1.5">Verification code</label>
               <input
                 type="text"
                 value={code}
@@ -100,7 +100,7 @@ export default function LoginPage() {
                 className="w-full px-3 py-3 rounded-lg bg-secondary border border-border text-lg text-foreground text-center font-mono tracking-[0.5em] placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
               />
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                Abre Google Authenticator o Authy y escribe el código de 6 dígitos
+                Open Google Authenticator or Authy and enter the 6-digit code
               </p>
             </div>
             <button
@@ -112,7 +112,7 @@ export default function LoginPage() {
                 <Spinner className="w-4 h-4 text-primary-foreground" />
               ) : (
                 <>
-                  Verificar
+                  Verify
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -122,7 +122,7 @@ export default function LoginPage() {
               onClick={() => { setTwoFAStep(false); setTempToken(""); setCode(""); login.reset(); }}
               className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
             >
-              ← Volver al login
+              ← Back to login
             </button>
           </form>
         ) : (
@@ -134,14 +134,14 @@ export default function LoginPage() {
                 <input
                   {...register("email")}
                   type="email"
-                  placeholder="alex@empresa.com"
+                  placeholder="alex@company.com"
                   className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
                 />
                 {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
               </div>
 
               <div>
-                <label className="text-sm font-medium text-foreground block mb-1.5">Contraseña</label>
+                <label className="text-sm font-medium text-foreground block mb-1.5">Password</label>
                 <div className="relative">
                   <input
                     {...register("password")}
@@ -162,7 +162,7 @@ export default function LoginPage() {
 
               <div className="flex justify-end">
                 <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                  ¿Olvidaste tu contraseña?
+                  Forgot your password?
                 </Link>
               </div>
 
@@ -175,7 +175,7 @@ export default function LoginPage() {
                   <Spinner className="w-4 h-4 text-primary-foreground" />
                 ) : (
                   <>
-                    Iniciar sesión
+                    Sign in
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -185,7 +185,7 @@ export default function LoginPage() {
             <div className="mt-4">
               <div className="relative flex items-center gap-2 my-3">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">o continúa con</span>
+                <span className="text-xs text-muted-foreground">or continue with</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               <button
@@ -199,15 +199,15 @@ export default function LoginPage() {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
-                Continuar con Google
+                Continue with Google
               </button>
             </div>
 
             <div className="mt-4 pt-4 border-t border-border text-center">
               <p className="text-sm text-muted-foreground">
-                ¿No tienes cuenta?{" "}
+                Don&apos;t have an account?{" "}
                 <Link href="/register" className="text-primary hover:underline font-medium">
-                  Regístrate gratis
+                  Sign up for free
                 </Link>
               </p>
             </div>
@@ -216,7 +216,7 @@ export default function LoginPage() {
       </div>
 
       <p className="text-center text-xs text-muted-foreground mt-6">
-        Al continuar aceptas los <span className="underline cursor-pointer">Términos de servicio</span>
+        By continuing you agree to the <span className="underline cursor-pointer">Terms of Service</span>
       </p>
     </div>
   );

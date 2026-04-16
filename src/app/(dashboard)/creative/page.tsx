@@ -110,7 +110,7 @@ export default function CreativePage() {
           <div className="flex items-center gap-2">
             <button onClick={() => setShowBatch(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all">
-              <Sparkles className="w-3.5 h-3.5" /> Generar batch
+              <Sparkles className="w-3.5 h-3.5" /> Generar lote
             </button>
             <button onClick={() => setShowNewGallery(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-all">
@@ -140,8 +140,8 @@ export default function CreativePage() {
             <GallerySkeleton />
           ) : !batches?.length ? (
             <EmptyState icon={FolderOpen} title="Sin galerías aún"
-              description="Genera tu primer batch de creativos o crea una galería vacía."
-              action={{ label: "Generar batch", onClick: () => setShowBatch(true) }} />
+              description="Genera tu primer lote de creativos o crea una galería vacía."
+              action={{ label: "Generar lote", onClick: () => setShowBatch(true) }} />
           ) : (
             <div className="space-y-3">
               {batches.map((batch) => {
@@ -207,8 +207,8 @@ export default function CreativePage() {
             <CreativeGridSkeleton count={8} />
           ) : !productCreatives?.length ? (
             <EmptyState icon={ImageIcon} title="Sin creativos para este producto"
-              description="Genera creativos vinculados a este producto usando un batch o el agente de imágenes."
-              action={{ label: "Generar batch", onClick: () => setShowBatch(true) }} />
+              description="Genera creativos vinculados a este producto usando un lote o el agente de imágenes."
+              action={{ label: "Generar lote", onClick: () => setShowBatch(true) }} />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {productCreatives.map((c) => (
@@ -287,7 +287,7 @@ export default function CreativePage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
 
       {/* ── Generate Batch Modal ── */}
-      <Modal open={showBatch} onClose={() => !batchStreaming && setShowBatch(false)} title="Nuevo batch de creativos" className="max-w-lg">
+      <Modal open={showBatch} onClose={() => !batchStreaming && setShowBatch(false)} title="Nuevo lote de creativos" className="max-w-lg">
         <form onSubmit={(e) => {
           e.preventDefault();
           const selectedProduct = products?.find((p) => p.id === batchForm.product_id);

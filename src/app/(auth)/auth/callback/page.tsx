@@ -28,7 +28,7 @@ export default function AuthCallbackPage() {
     <div className="flex flex-col items-center justify-center gap-4 relative z-10">
       <Logo size={64} fit="contain" />
       <Spinner className="w-6 h-6 text-violet-400" />
-      <p className="text-sm text-muted-foreground">Autenticando con Google...</p>
+      <p className="text-sm text-muted-foreground">Authenticating with Google...</p>
     </div>
   );
 }

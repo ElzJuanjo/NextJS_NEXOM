@@ -29,17 +29,17 @@ export default function VerifyEmailPage() {
       {verify.isPending && (
         <div className="space-y-3">
           <Spinner className="w-8 h-8 mx-auto text-violet-400" />
-          <p className="text-sm text-muted-foreground">Verificando tu email...</p>
+          <p className="text-sm text-muted-foreground">Verifying your email...</p>
         </div>
       )}
 
       {verify.isSuccess && (
         <div className="space-y-3">
           <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-          <h2 className="text-lg font-semibold text-foreground">Email verificado</h2>
+          <h2 className="text-lg font-semibold text-foreground">Email verified</h2>
           <p className="text-sm text-muted-foreground">{verify.data?.message}</p>
           <Link href="/dashboard" className="inline-flex px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity mt-2">
-            Ir al dashboard
+            Go to dashboard
           </Link>
         </div>
       )}
@@ -47,10 +47,10 @@ export default function VerifyEmailPage() {
       {verify.isError && (
         <div className="space-y-3">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-          <h2 className="text-lg font-semibold text-foreground">Error de verificación</h2>
+          <h2 className="text-lg font-semibold text-foreground">Verification error</h2>
           <p className="text-sm text-muted-foreground">{verify.error?.message}</p>
           <Link href="/login" className="inline-flex px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity mt-2">
-            Volver al login
+            Back to login
           </Link>
         </div>
       )}
