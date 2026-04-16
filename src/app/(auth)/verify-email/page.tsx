@@ -23,7 +23,7 @@ export default function VerifyEmailPage() {
   return (
     <div ref={ref} className="w-full max-w-sm relative z-10 text-center opacity-0">
       <div className="flex justify-center mb-4">
-        <Logo size={48} />
+        <Logo size={64} fit="contain" />
       </div>
 
       {verify.isPending && (

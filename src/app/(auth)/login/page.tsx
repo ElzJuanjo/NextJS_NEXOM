@@ -58,7 +58,7 @@ export default function LoginPage() {
   return (
     <div ref={containerRef} className="w-full max-w-sm relative z-10 opacity-0">
       <div className="flex flex-col items-center mb-8">
-        <Logo size={48} className="mb-4" />
+        <Logo size={64} className="mb-4" fit="contain" />
         <h1 className="text-2xl font-bold text-foreground tracking-tight">
           {twoFAStep ? "Verificación 2FA" : "Bienvenido de vuelta"}
         </h1>

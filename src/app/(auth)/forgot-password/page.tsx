@@ -23,7 +23,7 @@ export default function ForgotPasswordPage() {
   return (
     <div ref={ref} className="w-full max-w-sm relative z-10 opacity-0">
       <div className="flex flex-col items-center mb-8">
-        <Logo size={48} className="mb-4" />
+        <Logo size={64} className="mb-4" fit="contain" />
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Recuperar contraseña</h1>
         <p className="text-sm text-muted-foreground mt-1">Te enviaremos un enlace para restablecer tu acceso</p>
       </div>

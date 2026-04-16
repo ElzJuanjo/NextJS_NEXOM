@@ -248,7 +248,7 @@ export function Sidebar() {
 
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-card/95 backdrop-blur-sm border-b border-border flex items-center justify-between px-4">
-        <Logo size={28} showWordmark />
+        <Logo size={96} fit="contain" bare />
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Abrir menú"
@@ -267,7 +267,7 @@ export function Sidebar() {
           />
           <div className="md:hidden fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-card border-r border-border z-50 flex flex-col animate-fade-in-left shadow-2xl">
             <div className="flex items-center justify-between h-14 px-4 border-b border-border shrink-0">
-              <Logo size={28} showWordmark />
+              <Logo size={64} fit="contain" bare />
               <button
                 onClick={() => setMobileOpen(false)}
                 aria-label="Cerrar menú"
