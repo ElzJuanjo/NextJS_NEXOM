@@ -1,8 +1,49 @@
 "use client";
 
-import { useState, useMemo, useCallback, type ReactNode } from "react";
+import { useState, useMemo, useCallback, Fragment, isValidElement, Children, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// ─── Block-level detection ──────────────────────────────────────────
+// react-markdown wraps loose text/images in <p>. When our custom `img`
+// renderer returns a <figure>, or when a <pre>/<div>/<table> sneaks in as
+// a child of a paragraph, rendering the native <p> produces invalid HTML
+// (<figure> cannot be a descendant of <p>) and triggers React hydration
+// errors. We detect block-level children here so the `p` renderer can
+// fall back to a Fragment and keep the DOM valid.
+const BLOCK_LEVEL_TAGS = new Set([
+    "figure", "div", "pre", "table", "img",
+    "ul", "ol", "blockquote", "hr",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+]);
+
+function hasBlockLevelChild(children: ReactNode): boolean {
+    let found = false;
+    Children.forEach(children, (child) => {
+        if (found) return;
+        if (!isValidElement(child)) return;
+        const type = child.type as unknown;
+        // For markdown-derived elements, `type` is the tag name string
+        // (e.g., "img") BEFORE our custom components replace it, or the
+        // custom component function AFTER. react-markdown resolves
+        // components by tag, so when a markdown `img` is rendered by our
+        // custom `img` handler, `child.type` becomes that function. We
+        // can't reliably introspect the function; so we detect using the
+        // raw tag name when available (string type) and fall back to
+        // checking for an `src` prop (img-like) as a heuristic.
+        if (typeof type === "string" && BLOCK_LEVEL_TAGS.has(type.toLowerCase())) {
+            found = true;
+            return;
+        }
+        // Heuristic: if a child has `src`, it's an <img> — which our
+        // custom renderer will wrap in a <figure>. Treat as block.
+        const props = (child as { props?: Record<string, unknown> }).props;
+        if (props && typeof props === "object" && "src" in props) {
+            found = true;
+        }
+    });
+    return found;
+}
 
 // ─── Copy Button for Code Blocks ────────────────────────────────────
 function CopyButton({ text }: { text: string }) {
@@ -230,9 +271,20 @@ export function MarkdownRenderer({ content, compact = false }: MarkdownRendererP
                 remarkPlugins={[remarkGfm]}
                 components={{
                     // ── Paragraphs ──────────────────────────────────
-                    p: ({ children }) => (
-                        <p className={`${spacing.p} last:mb-0 leading-[1.75]`}>{children}</p>
-                    ),
+                    // If the markdown produces a paragraph that wraps a
+                    // block-level element (e.g. an <img> that we render as
+                    // <figure>, a <pre>, a <div>), we must NOT output a
+                    // real <p> — that would be invalid HTML and React
+                    // will throw a hydration error. In that case we
+                    // unwrap to a Fragment so the block renders cleanly.
+                    p: ({ children }) => {
+                        if (hasBlockLevelChild(children)) {
+                            return <Fragment>{children}</Fragment>;
+                        }
+                        return (
+                            <p className={`${spacing.p} last:mb-0 leading-[1.75]`}>{children}</p>
+                        );
+                    },
 
                     // ── Headings (improved hierarchy) ───────────────
                     h1: ({ children }) => (
