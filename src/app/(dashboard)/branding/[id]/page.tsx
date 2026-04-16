@@ -133,7 +133,7 @@ export default function BrandDetailPage() {
     const renderOverview = () => (
         <div className="space-y-6">
             {/* Hero card */}
-            <div className="bg-card border border-border rounded-2xl p-8 flex flex-col items-center text-center">
+            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center">
                 <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-3xl font-bold mb-4 shadow-lg"
                     style={{ backgroundColor: primaryHex, color: "#fff" }}>
                     {initials}
@@ -506,37 +506,40 @@ export default function BrandDetailPage() {
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-6 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => router.push("/branding")} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+            <header className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 min-h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <button onClick={() => router.push("/branding")}
+                        aria-label="Volver"
+                        className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0">
                         <ArrowLeft className="w-4 h-4" />
                     </button>
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
                             style={{ backgroundColor: primaryHex, color: "#fff" }}>
                             {initials}
                         </div>
-                        <div>
-                            <h1 className="text-sm font-semibold text-foreground leading-tight">{brand.name}</h1>
-                            <p className="text-[10px] text-muted-foreground">Brand Guidelines</p>
+                        <div className="min-w-0">
+                            <h1 className="text-sm font-semibold text-foreground leading-tight truncate">{brand.name}</h1>
+                            <p className="text-[10px] text-muted-foreground hidden sm:block">Brand Guidelines</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     <button onClick={() => exportPdf.mutate({ id: brand.id, name: brand.name })}
                         disabled={exportPdf.isPending}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-all disabled:opacity-50">
+                        aria-label="Exportar PDF"
+                        className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 h-9 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-accent active:scale-[0.98] transition-all disabled:opacity-50">
                         {exportPdf.isPending ? <Spinner className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
-                        Exportar PDF
+                        <span className="hidden sm:inline whitespace-nowrap">Exportar PDF</span>
                     </button>
                 </div>
             </header>
 
             {/* Body */}
-            <div className="flex-1 flex overflow-hidden">
-                {/* Left nav */}
-                <nav className="hidden md:flex flex-col w-52 border-r border-border p-3 gap-0.5 shrink-0">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                {/* Left nav (desktop) */}
+                <nav className="hidden md:flex flex-col w-52 border-r border-border p-3 gap-0.5 shrink-0 overflow-y-auto scrollbar-thin">
                     {NAV_ITEMS.map(item => {
                         const Icon = item.icon;
                         const isActive = activeSection === item.id;
@@ -554,15 +557,15 @@ export default function BrandDetailPage() {
                 </nav>
 
                 {/* Mobile nav tabs */}
-                <div className="md:hidden flex overflow-x-auto border-b border-border px-4 gap-1 shrink-0">
+                <div className="md:hidden flex overflow-x-auto border-b border-border px-2 gap-1 shrink-0 scrollbar-thin">
                     {NAV_ITEMS.map(item => {
                         const Icon = item.icon;
                         const isActive = activeSection === item.id;
                         return (
                             <button key={item.id} onClick={() => { setActiveSection(item.id); setEditing(null); }}
                                 className={cn(
-                                    "flex items-center gap-1.5 px-3 py-2.5 text-xs whitespace-nowrap border-b-2 transition-all",
-                                    isActive ? "border-primary text-foreground" : "border-transparent text-muted-foreground"
+                                    "flex items-center gap-1.5 px-3 py-2.5 text-xs whitespace-nowrap border-b-2 transition-all shrink-0",
+                                    isActive ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
                                 )}>
                                 <Icon className="w-3.5 h-3.5" />
                                 {item.label}
@@ -572,7 +575,7 @@ export default function BrandDetailPage() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-thin">
                     <div className="max-w-3xl mx-auto">
                         {sectionRenderers[activeSection]?.()}
                     </div>

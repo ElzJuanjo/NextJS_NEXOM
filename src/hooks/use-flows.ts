@@ -166,31 +166,76 @@ export function useExecuteFlowStream() {
     setResult(null);
   };
 
-  /** Reanuda el flow pausado con la selección del usuario.
-   *  Reusa el state de result para que la UI se actualice in-place. */
+  /** Reanuda el flow pausado con la selección del usuario via SSE.
+   *  Mantiene viva la barra de progreso desde el porcentaje en el que
+   *  se pausó (no resetea a 0). */
   const resumeWithSelection = async (
     flowId: string,
     selected: CandidateProduct[],
     onSuccess?: (data: Record<string, unknown>) => void,
   ) => {
     setIsPending(true);
+    // No reseteamos progress ni stepStatuses — mantenemos los del run anterior
+    // para que la barra continúe desde donde estaba al pausarse.
+    if (!progress) {
+      setProgress({ stage: "resuming", pct: 50, message: "Resuming flow..." });
+    }
+
     try {
-      const data = await flowService.resumeWithSelection(flowId, selected);
-      setResult(data);
-      qc.invalidateQueries({ queryKey: flowKeys.list });
-      qc.invalidateQueries({ queryKey: ["org", "usage"] });
-      qc.invalidateQueries({ queryKey: ["products"] });
-      if (data?.status === "error") {
-        toast.error(typeof data.error === "string" ? data.error : "Flow resume error");
-      } else {
-        toast.success(`Flow completado: ${data.completed_steps ?? "?"}/${data.total_steps ?? "?"} pasos`);
-      }
-      onSuccess?.(data);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Error reanudando flow";
-      toast.error(msg);
-    } finally {
+      await flowService.resumeWithSelectionStream(
+        flowId,
+        selected,
+        (event) => {
+          setProgress(event);
+          if (event.agent) {
+            setStepStatuses((prev) => ({
+              ...prev,
+              [event.agent!]: {
+                agent: event.agent!,
+                status: event.stage === "step_started" ? "running"
+                  : event.stage === "step_completed" ? "completed"
+                  : event.stage === "step_error" ? "error"
+                  : prev[event.agent!]?.status === "completed" ? "completed"
+                  : "running",
+                message: event.message || "",
+                detail: event.detail,
+              },
+            }));
+          }
+          showProgressToast({
+            id: "flow-progress",
+            message: event.message || "Processing...",
+            pct: event.pct,
+            detail: event.detail,
+          });
+        },
+        (data) => {
+          dismissProgressToast("flow-progress");
+          setProgress(null);
+          setIsPending(false);
+          setResult(data);
+          qc.invalidateQueries({ queryKey: flowKeys.list });
+          qc.invalidateQueries({ queryKey: ["org", "usage"] });
+          qc.invalidateQueries({ queryKey: ["products"] });
+          if (data?.status === "error") {
+            toast.error(typeof data.error === "string" ? data.error : "Flow resume error");
+          } else {
+            toast.success(`Flow completado: ${data.completed_steps ?? "?"}/${data.total_steps ?? "?"} pasos`);
+          }
+          onSuccess?.(data);
+        },
+        (error) => {
+          dismissProgressToast("flow-progress");
+          setProgress(null);
+          setIsPending(false);
+          toast.error(error);
+        },
+      );
+    } catch {
+      dismissProgressToast("flow-progress");
+      setProgress(null);
       setIsPending(false);
+      toast.error("Connection error during resume");
     }
   };
 

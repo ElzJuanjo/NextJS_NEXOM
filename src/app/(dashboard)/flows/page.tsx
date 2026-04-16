@@ -41,10 +41,23 @@ export default function FlowsPage() {
   });
 
   // ── Reference image for flows ──
-  const [referenceImage, setReferenceImage] = useState<{ file: File; preview: string; s3Url?: string } | null>(null);
+  // dataUrl: el upload ephemeral retorna un data:image/...;base64,... que se
+  // pasa directo a los agentes (no toca S3). Mantenemos el File local como
+  // fallback por si el upload aún no terminó cuando el usuario presiona Execute.
+  const [referenceImage, setReferenceImage] = useState<{ file: File; preview: string; dataUrl?: string } | null>(null);
   const [isUploadingRef, setIsUploadingRef] = useState(false);
   const uploadRefImage = useUploadEphemeralImage();
   const refFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Convierte un File a data:image/...;base64,... directamente en el cliente.
+  // Fallback usado cuando el upload ephemeral al backend aún no resolvió.
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("read error"));
+      reader.readAsDataURL(file);
+    });
 
   const toggleFlow = (id: string) => {
     setExpandedFlows((prev) => {
@@ -54,7 +67,7 @@ export default function FlowsPage() {
     });
   };
 
-  const handleExecute = (flowId: string) => {
+  const handleExecute = async (flowId: string) => {
     const ctx: Record<string, unknown> = {};
     if (contextForm.brand) ctx.brand = contextForm.brand;
     if (contextForm.product) ctx.product = contextForm.product;
@@ -63,11 +76,23 @@ export default function FlowsPage() {
     if (contextForm.audience) ctx.audience = contextForm.audience;
     if (contextForm.tone) ctx.tone = contextForm.tone;
 
+    // Resolver imagen de referencia: priorizar el dataUrl del upload ephemeral;
+    // si no está listo, convertimos el File localmente (fallback robusto).
+    let refImageUrl: string | undefined = referenceImage?.dataUrl;
+    if (referenceImage && !refImageUrl) {
+      try {
+        refImageUrl = await fileToDataUrl(referenceImage.file);
+      } catch {
+        toast.error("No se pudo leer la imagen de referencia");
+        return;
+      }
+    }
+
     executeFlowStream(
       {
         flow_id: flowId,
         context: Object.keys(ctx).length > 0 ? ctx : undefined,
-        reference_image_url: referenceImage?.s3Url,
+        reference_image_url: refImageUrl,
       },
       () => {
         setShowExecute(null);
@@ -146,7 +171,22 @@ export default function FlowsPage() {
                       </p>
                     </div>
                     <StatusBadge status={flow.status} />
-                    {flow.status !== "running" && (
+                    {flow.status === "paused" && (
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        // Flow pausado: re-ejecutar dispara el fix del backend
+                        // que devuelve el estado de pausa rehidratado, abriendo
+                        // el modal de selección directamente sin pedir contexto.
+                        executeFlowStream(
+                          { flow_id: flow.id },
+                          () => { setShowResult(true); },
+                        );
+                      }}
+                        className="p-1.5 rounded-md hover:bg-amber-400/10 transition-colors" title="Resume from selection">
+                        <Play className="w-3.5 h-3.5 text-amber-400" />
+                      </button>
+                    )}
+                    {flow.status !== "running" && flow.status !== "paused" && (
                       <button onClick={(e) => { e.stopPropagation(); setShowExecute(flow.id); setContextForm({ brand: "", product: "", niche: "", market: "", audience: "", tone: "" }); }}
                         className="p-1.5 rounded-md hover:bg-emerald-400/10 transition-colors" title="Execute">
                         <Play className="w-3.5 h-3.5 text-emerald-400" />
@@ -323,10 +363,12 @@ export default function FlowsPage() {
                   try {
                     const result = await uploadRefImage.mutateAsync(file);
                     setReferenceImage((prev) =>
-                      prev ? { ...prev, s3Url: result.url } : null
+                      prev ? { ...prev, dataUrl: result.url } : null
                     );
                   } catch {
-                    setReferenceImage(null);
+                    // Si el upload falla, igual conservamos el File local —
+                    // handleExecute hará fallback con FileReader.
+                    toast("Upload del backend falló, usando imagen local", { icon: "⚠️" });
                   } finally {
                     setIsUploadingRef(false);
                     if (e.target) e.target.value = "";
@@ -356,9 +398,11 @@ export default function FlowsPage() {
                       <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <Loader2 className="w-2.5 h-2.5 animate-spin" /> Subiendo...
                       </p>
-                    ) : referenceImage.s3Url ? (
+                    ) : referenceImage.dataUrl ? (
                       <p className="text-[10px] text-emerald-400">✓ Lista para usar en el flow</p>
-                    ) : null}
+                    ) : (
+                      <p className="text-[10px] text-amber-400">Lista (modo local)</p>
+                    )}
                   </div>
                   <button
                     onClick={() => {
@@ -423,6 +467,29 @@ export default function FlowsPage() {
                     {fr.completed_steps}/{fr.total_steps} pasos ejecutados — esperando tu selección
                   </span>
                 </div>
+
+                {/* Barra de progreso persistente: muestra el % del run anterior
+                    y se reanima cuando el usuario confirma la selección */}
+                {(progress || flowRunning) && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {progress?.message ?? "Listo para continuar"}
+                      </span>
+                      <span className="text-xs text-violet-400 font-semibold">
+                        {progress?.pct ?? Math.round((fr.completed_steps / Math.max(fr.total_steps, 1)) * 100)}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+                        style={{
+                          width: `${progress?.pct ?? Math.round((fr.completed_steps / Math.max(fr.total_steps, 1)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <p className="text-sm text-muted-foreground">
                   El agente <span className="text-emerald-400 font-medium">product_search</span> encontró{" "}

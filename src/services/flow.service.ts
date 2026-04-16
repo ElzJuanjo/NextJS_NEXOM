@@ -131,6 +131,71 @@ export const flowService = {
     return data;
   },
 
+  async resumeWithSelectionStream(
+    flowId: string,
+    selected: CandidateProduct[],
+    onProgress: (event: { stage: string; pct: number; agent?: string; message?: string; detail?: string }) => void,
+    onDone: (data: Record<string, unknown>) => void,
+    onError: (error: string) => void,
+  ): Promise<void> {
+    const token = getAccessToken();
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${BASE}/${flowId}/resume-with-selection/stream`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ selected_products: selected }),
+      },
+    );
+
+    if (!response.ok || !response.body) {
+      const text = await response.text().catch(() => "Unknown error");
+      onError(`HTTP ${response.status}: ${text}`);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split("\n\n");
+      buffer = blocks.pop() || "";
+
+      for (const block of blocks) {
+        if (!block.trim()) continue;
+
+        const eventMatch = block.match(/^event: (\w+)/m);
+        const dataMatch = block.match(/^data: (.+)$/m);
+
+        if (!eventMatch || !dataMatch) continue;
+
+        try {
+          const eventType = eventMatch[1];
+          const data = JSON.parse(dataMatch[1]);
+
+          if (eventType === "progress") {
+            onProgress(data);
+          } else if (eventType === "done") {
+            onDone(data);
+          } else if (eventType === "error") {
+            onError(data.error || "Unknown error");
+          }
+        } catch {
+          // Skip malformed events
+        }
+      }
+    }
+  },
+
   // Templates
   async listTemplates() {
     const { data } = await apiClient.get<{ templates: FlowTemplateInfo[] }>("/api/v1/flow-templates");

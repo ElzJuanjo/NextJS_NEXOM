@@ -47,7 +47,7 @@ const STATUSES = [
 ];
 
 function getCopyTypeMeta(type: string) {
-  return COPY_TYPES.find((t) => t.id === type) || COPY_TYPES[5]; // default to body
+  return COPY_TYPES.find((t) => t.id === type) || COPY_TYPES[5];
 }
 
 function getPlatformLabel(platform: string | null) {
@@ -62,7 +62,6 @@ export default function CopywritingPage() {
   const { data: brands } = useBrands();
   const { data: products } = useProducts();
 
-  // Filters
   const [filterType, setFilterType] = useState<string | undefined>(undefined);
   const [filterPlatform, setFilterPlatform] = useState<string | undefined>(undefined);
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
@@ -82,7 +81,6 @@ export default function CopywritingPage() {
   const updateAsset = useUpdateCopyAsset();
   const deleteAsset = useDeleteCopyAsset();
 
-  // Create / Edit state
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CopyAssetResponse | null>(null);
   const [form, setForm] = useState({
@@ -96,13 +94,10 @@ export default function CopywritingPage() {
     product_id: "",
   });
 
-  // Expanded card for viewing full content
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Active filter count (for badge)
   const activeFilterCount = [filterType, filterPlatform, filterStatus, filterBrand].filter(Boolean).length;
 
-  // Search filter (client-side on top of server filters)
   const filteredAssets = assets?.filter((a) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -112,8 +107,6 @@ export default function CopywritingPage() {
       (a.tone && a.tone.toLowerCase().includes(q))
     );
   });
-
-  // ── Handlers ────────────────────────────────────────────────────────────
 
   const openCreate = () => {
     setEditing(null);
@@ -157,7 +150,6 @@ export default function CopywritingPage() {
         { onSuccess: () => setShowForm(false) },
       );
     } else {
-      // Para create, eliminar campos null opcionales que el backend no espera
       const createPayload = { ...payload };
       if (!createPayload.platform) delete createPayload.platform;
       if (!createPayload.tone) delete createPayload.tone;
@@ -189,8 +181,6 @@ export default function CopywritingPage() {
     setFilterBrand(undefined);
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────
-
   return (
     <div className="flex flex-col h-full">
       <Header
@@ -198,59 +188,61 @@ export default function CopywritingPage() {
         subtitle="Biblioteca de copy assets — textos, headlines, ads y contenido"
       />
 
-      <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+      <div className="flex-1 p-3 sm:p-6 space-y-4 overflow-y-auto">
 
         {/* ── Search + Filter bar ──────────────────────────────────────── */}
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div className="flex items-center gap-2 flex-1 max-w-md px-3 py-2 rounded-lg border border-border bg-card text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          {/* Search — full width en mobile */}
+          <div className="flex items-center gap-2 flex-1 sm:max-w-md px-3 py-2 rounded-lg border border-border bg-card text-sm">
             <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <input
               type="text"
               placeholder="Buscar por nombre, contenido o tono..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent outline-none text-sm placeholder:text-muted-foreground w-full text-foreground"
+              className="bg-transparent outline-none text-sm placeholder:text-muted-foreground w-full text-foreground min-w-0"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-foreground shrink-0">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Filter toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
-              showFilters || activeFilterCount > 0
-                ? "text-amber-400 bg-amber-400/10 border-amber-400/20"
-                : "border-border text-muted-foreground hover:bg-accent",
-            )}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            Filtros
-            {activeFilterCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-amber-400 text-[10px] text-black font-bold flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          {activeFilterCount > 0 && (
+          {/* Filter actions row */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={clearAllFilters}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all shrink-0",
+                showFilters || activeFilterCount > 0
+                  ? "text-amber-400 bg-amber-400/10 border-amber-400/20"
+                  : "border-border text-muted-foreground hover:bg-accent",
+              )}
             >
-              Limpiar
+              <Filter className="w-3.5 h-3.5" />
+              Filtros
+              {activeFilterCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-amber-400 text-[10px] text-black font-bold flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
-          )}
+
+            {activeFilterCount > 0 && (
+              <button
+                onClick={clearAllFilters}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-2"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Expanded Filters ────────────────────────────────────────── */}
         {showFilters && (
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3 animate-fade-in">
+          <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-3 animate-fade-in">
             {/* Copy type pills */}
             <div>
               <span className="text-xs text-muted-foreground block mb-2">Tipo de copy</span>
@@ -301,11 +293,11 @@ export default function CopywritingPage() {
               </div>
             </div>
 
-            <div className="flex gap-4">
-              {/* Status filter */}
+            {/* Status + Brand — wrap en mobile */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
               <div>
                 <span className="text-xs text-muted-foreground block mb-2">Estado</span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {STATUSES.map((s) => {
                     const active = filterStatus === s.id;
                     return (
@@ -326,9 +318,8 @@ export default function CopywritingPage() {
                 </div>
               </div>
 
-              {/* Brand filter */}
               {brands && brands.length > 0 && (
-                <div>
+                <div className="min-w-0">
                   <span className="text-xs text-muted-foreground block mb-2">Marca</span>
                   <div className="flex flex-wrap gap-2">
                     {brands.map((b) => {
@@ -338,7 +329,7 @@ export default function CopywritingPage() {
                           key={b.id}
                           onClick={() => setFilterBrand(active ? undefined : b.id)}
                           className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all max-w-full",
                             active
                               ? "text-pink-400 bg-pink-400/10 border-pink-400/20"
                               : "border-border text-muted-foreground hover:bg-accent",
@@ -346,11 +337,11 @@ export default function CopywritingPage() {
                         >
                           {b.color_palette?.primary && (
                             <div
-                              className="w-2.5 h-2.5 rounded-full border border-border"
+                              className="w-2.5 h-2.5 rounded-full border border-border shrink-0"
                               style={{ backgroundColor: (b.color_palette as Record<string, string>).primary }}
                             />
                           )}
-                          {b.name}
+                          <span className="truncate">{b.name}</span>
                         </button>
                       );
                     })}
@@ -408,7 +399,7 @@ export default function CopywritingPage() {
                 >
                   {/* ── Card header ─────────────────────────────────── */}
                   <div
-                    className="flex items-start gap-3 p-4 cursor-pointer"
+                    className="flex items-start gap-3 p-3 sm:p-4 cursor-pointer"
                     onClick={() => setExpandedId(isExpanded ? null : asset.id)}
                   >
                     {/* Type icon */}
@@ -418,20 +409,20 @@ export default function CopywritingPage() {
 
                     {/* Content preview */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-medium text-foreground truncate">{asset.name}</h3>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="text-sm font-medium text-foreground truncate min-w-0">{asset.name}</h3>
                         <StatusBadge status={asset.status} />
                       </div>
 
                       <p className={cn(
-                        "text-sm text-muted-foreground",
+                        "text-sm text-muted-foreground break-words",
                         isExpanded ? "" : "line-clamp-2",
                       )}>
                         {asset.content}
                       </p>
 
                       {/* Tags row */}
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                         <span className={cn(
                           "text-[10px] px-2 py-0.5 rounded-full font-medium border",
                           typeMeta.color, typeMeta.bg, typeMeta.border,
@@ -446,28 +437,33 @@ export default function CopywritingPage() {
                         )}
 
                         {asset.tone && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full text-muted-foreground bg-muted border border-border">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full text-muted-foreground bg-muted border border-border max-w-[140px] truncate">
                             {asset.tone}
                           </span>
                         )}
 
                         {brandName && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full text-pink-400 bg-pink-400/10 border border-pink-400/20 font-medium">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full text-pink-400 bg-pink-400/10 border border-pink-400/20 font-medium max-w-[140px] truncate">
                             {brandName}
                           </span>
                         )}
                       </div>
+
+                      {/* Timestamp inline en mobile (debajo de tags) */}
+                      <span className="text-[11px] text-muted-foreground mt-2 block sm:hidden">
+                        {formatRelativeTime(asset.created_at)}
+                      </span>
                     </div>
 
-                    {/* Timestamp */}
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                    {/* Timestamp desktop */}
+                    <span className="hidden sm:block text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                       {formatRelativeTime(asset.created_at)}
                     </span>
                   </div>
 
                   {/* ── Expanded section ────────────────────────────── */}
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 border-t border-border space-y-3">
+                    <div className="px-3 sm:px-4 pb-4 pt-1 border-t border-border space-y-3">
 
                       {/* Variations */}
                       {asset.variations && asset.variations.length > 0 && (
@@ -477,7 +473,7 @@ export default function CopywritingPage() {
                             {asset.variations.map((v, i) => (
                               <div
                                 key={i}
-                                className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground"
+                                className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground break-words"
                               >
                                 <span className="text-[10px] text-muted-foreground font-medium mr-2">v{v.order}</span>
                                 {v.content}
@@ -487,16 +483,17 @@ export default function CopywritingPage() {
                         </div>
                       )}
 
-                      {/* Brand assign + Product assign + Status + Actions */}
-                      <div className="flex items-center justify-between gap-4 pt-2">
+                      {/* Selectors + Actions — full wrap en mobile */}
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pt-2">
+                        {/* Selectors group */}
                         <div className="flex items-center gap-3 flex-wrap">
                           {/* Brand selector */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             <span className="text-xs text-muted-foreground shrink-0">Marca:</span>
                             <select
                               value={asset.brand_id || ""}
                               onChange={(e) => handleBrandAssign(asset.id, e.target.value || null)}
-                              className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs text-foreground outline-none focus:border-ring transition-all"
+                              className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs text-foreground outline-none focus:border-ring transition-all max-w-[140px]"
                             >
                               <option value="">Sin marca</option>
                               {brands?.map((b) => (
@@ -506,12 +503,12 @@ export default function CopywritingPage() {
                           </div>
 
                           {/* Product selector */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             <span className="text-xs text-muted-foreground shrink-0">Producto:</span>
                             <select
                               value={asset.product_id || ""}
                               onChange={(e) => updateAsset.mutate({ id: asset.id, body: { product_id: e.target.value || null } })}
-                              className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs text-foreground outline-none focus:border-ring transition-all"
+                              className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs text-foreground outline-none focus:border-ring transition-all max-w-[140px]"
                             >
                               <option value="">Sin producto</option>
                               {products?.map((p) => (
@@ -536,24 +533,22 @@ export default function CopywritingPage() {
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 flex-wrap lg:justify-end">
                           <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(asset.content);
-                            }}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-accent"
+                            onClick={() => navigator.clipboard.writeText(asset.content)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5 rounded-md hover:bg-accent"
                           >
                             <Copy className="w-3 h-3" /> Copiar
                           </button>
                           <button
                             onClick={() => openEdit(asset)}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-accent"
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5 rounded-md hover:bg-accent"
                           >
                             <Edit3 className="w-3 h-3" /> Editar
                           </button>
                           <button
                             onClick={() => handleDelete(asset.id)}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded-md hover:bg-destructive/10"
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1.5 rounded-md hover:bg-destructive/10"
                           >
                             <Trash2 className="w-3 h-3" /> Eliminar
                           </button>
@@ -589,8 +584,8 @@ export default function CopywritingPage() {
             />
           </div>
 
-          {/* Type + Platform row */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Type + Platform — stack en mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-foreground block mb-1.5">Tipo</label>
               <select
@@ -618,8 +613,8 @@ export default function CopywritingPage() {
             </div>
           </div>
 
-          {/* Tone + Brand + Product row */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Tone + Brand + Product — 1 col mobile, 3 cols desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-sm font-medium text-foreground block mb-1.5">Tono</label>
               <input

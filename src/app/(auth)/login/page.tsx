@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Zap, ArrowRight, Eye, EyeOff, Shield } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Shield } from "lucide-react";
 import { useLogin, useLoginVerify2FA } from "@/hooks/use-auth";
 import { authService } from "@/services/auth.service";
 import { useFadeIn } from "@/hooks/use-anime";
 import { Spinner } from "@/components/ui/Spinner";
+import { Logo } from "@/components/ui/Logo";
 
 const schema = z.object({
   email: z.string().email("Email inválido"),
@@ -57,9 +58,7 @@ export default function LoginPage() {
   return (
     <div ref={containerRef} className="w-full max-w-sm relative z-10 opacity-0">
       <div className="flex flex-col items-center mb-8">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-violet-500/25">
-          <Zap className="w-5 h-5 text-white" />
-        </div>
+        <Logo size={48} className="mb-4" />
         <h1 className="text-2xl font-bold text-foreground tracking-tight">
           {twoFAStep ? "Verificación 2FA" : "Bienvenido de vuelta"}
         </h1>

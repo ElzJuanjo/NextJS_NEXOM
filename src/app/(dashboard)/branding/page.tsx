@@ -189,9 +189,9 @@ export default function BrandingPage() {
                     )}
                   </div>
                 )}
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">Estado:</span>
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[10px] text-muted-foreground shrink-0">Estado:</span>
                     <select
                       value={brand.status}
                       onClick={(e) => e.stopPropagation()}

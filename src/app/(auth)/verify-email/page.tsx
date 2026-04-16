@@ -2,11 +2,12 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { Zap, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useVerifyEmail } from "@/hooks/use-auth";
 import { Spinner } from "@/components/ui/Spinner";
 import { useFadeIn } from "@/hooks/use-anime";
+import { Logo } from "@/components/ui/Logo";
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
@@ -21,8 +22,8 @@ export default function VerifyEmailPage() {
 
   return (
     <div ref={ref} className="w-full max-w-sm relative z-10 text-center opacity-0">
-      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-violet-500/25 mx-auto">
-        <Zap className="w-5 h-5 text-white" />
+      <div className="flex justify-center mb-4">
+        <Logo size={48} />
       </div>
 
       {verify.isPending && (

@@ -6,11 +6,12 @@ import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Zap, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useRegister } from "@/hooks/use-auth";
 import { authService } from "@/services/auth.service";
 import { useFadeIn } from "@/hooks/use-anime";
 import { Spinner } from "@/components/ui/Spinner";
+import { Logo } from "@/components/ui/Logo";
 
 const schema = z.object({
   full_name: z.string().min(2, "Mínimo 2 caracteres"),
@@ -38,9 +39,7 @@ export default function RegisterPage() {
   return (
     <div ref={containerRef} className="w-full max-w-sm relative z-10 opacity-0">
       <div className="flex flex-col items-center mb-8">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-violet-500/25">
-          <Zap className="w-5 h-5 text-white" />
-        </div>
+        <Logo size={48} className="mb-4" />
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Crea tu cuenta</h1>
         <p className="text-sm text-muted-foreground mt-1">Comienza a automatizar tu e-commerce</p>
       </div>

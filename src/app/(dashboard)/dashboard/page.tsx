@@ -110,14 +110,16 @@ export default function DashboardPage() {
 
         {/* Verification banner */}
         {verificationStatus && !verificationStatus.is_verified && (
-          <div className="flex items-center gap-3 px-5 py-3 rounded-xl bg-amber-400/10 border border-amber-400/20 animate-fade-in">
-            <Mail className="w-5 h-5 text-amber-400 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Verify your email</p>
-              <p className="text-xs text-muted-foreground">
-                We sent a verification link to <span className="text-foreground">{verificationStatus.email}</span>.
-                The link expires in {verificationStatus.verification_expires_hours}h.
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3 rounded-xl bg-amber-400/10 border border-amber-400/20 animate-fade-in">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <Mail className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Verify your email</p>
+                <p className="text-xs text-muted-foreground break-words">
+                  We sent a verification link to <span className="text-foreground">{verificationStatus.email}</span>.
+                  The link expires in {verificationStatus.verification_expires_hours}h.
+                </p>
+              </div>
             </div>
             <button
               onClick={() => {
