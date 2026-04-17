@@ -18,7 +18,6 @@ const FILTER_OPTIONS = [
     { id: "image_gen", label: "Imágenes" },
     { id: "ads", label: "Anuncios" },
     { id: "landing_page", label: "Landing" },
-    { id: "store_dev", label: "Tienda" },
     { id: "product_search", label: "Productos" },
     { id: "dropi_connector", label: "Dropi" },
     { id: "conversion_opt", label: "Conversión" },

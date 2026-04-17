@@ -343,7 +343,6 @@ export type AgentType =
   | "copywriting"
   | "ads"
   | "landing_page"
-  | "store_dev"
   | "image_gen"
   | "conversion_opt";
 
@@ -416,7 +415,6 @@ export const AGENT_META: AgentMeta[] = [
   { id: "copywriting", label: "Copywriting", color: "text-amber-400", activeBg: "bg-amber-400/10" },
   { id: "ads", label: "Ads", color: "text-orange-400", activeBg: "bg-orange-400/10" },
   { id: "landing_page", label: "Landing", color: "text-blue-400", activeBg: "bg-blue-400/10" },
-  { id: "store_dev", label: "Tienda", color: "text-indigo-400", activeBg: "bg-indigo-400/10" },
   { id: "image_gen", label: "Imágenes", color: "text-rose-400", activeBg: "bg-rose-400/10" },
   { id: "conversion_opt", label: "Conversión", color: "text-teal-400", activeBg: "bg-teal-400/10" },
 ];

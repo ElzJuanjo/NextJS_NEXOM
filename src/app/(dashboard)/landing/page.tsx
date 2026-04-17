@@ -35,7 +35,7 @@ const SECTION_TYPES = [
   { id: "testimonials", label: "Testimonios", icon: "💬" },
   { id: "faq", label: "FAQ", icon: "❓" },
   { id: "cta", label: "CTA Final", icon: "🚀" },
-  { id: "gallery", label: "Galería", icon: "🖼" },
+  { id: "gallery", label: "Carrusel", icon: "🎠" },
   { id: "product_gallery", label: "Galería Producto", icon: "📸" },
   { id: "specs", label: "Especificaciones", icon: "📋" },
   { id: "video_embed", label: "Video", icon: "🎬" },
@@ -86,7 +86,7 @@ export default function LandingPage() {
   const [styleTargetLpId, setStyleTargetLpId] = useState<string | null>(null);
 
   const [form, setForm] = useState({ name: "", campaign: "" });
-  const [sectionForm, setSectionForm] = useState({ title: "", body: "", cta_text: "", cta_url: "", image_url: "" });
+  const [sectionForm, setSectionForm] = useState({ title: "", body: "", cta_text: "", cta_url: "", image_url: "", images: [] as string[] });
   const [newSectionType, setNewSectionType] = useState("custom");
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [editingName, setEditingName] = useState<{ lpId: string; name: string } | null>(null);
@@ -169,6 +169,7 @@ export default function LandingPage() {
       cta_text: section.cta_text || "",
       cta_url: section.cta_url || "",
       image_url: section.image_url || "",
+      images: (section.images as string[]) || [],
     });
   };
 
@@ -656,6 +657,60 @@ export default function LandingPage() {
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
               <CreativeSelector onSelect={(url) => setSectionForm({ ...sectionForm, image_url: url })} />
             </div>
+
+            {/* ── Gallery Carousel: Multi-image selector ── */}
+            {editingSection.section_type === "gallery" && (
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1.5">
+                  Creativos del carrusel ({sectionForm.images.length})
+                </label>
+                {sectionForm.images.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {sectionForm.images.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img src={img} alt={`Slide ${idx + 1}`}
+                          className="w-full aspect-square object-cover rounded-lg border border-border" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                          {idx > 0 && (
+                            <button onClick={() => {
+                              const imgs = [...sectionForm.images];
+                              [imgs[idx - 1], imgs[idx]] = [imgs[idx], imgs[idx - 1]];
+                              setSectionForm({ ...sectionForm, images: imgs });
+                            }} className="p-1 rounded bg-white/20 hover:bg-white/40 text-white text-xs" title="Mover izquierda">
+                              ←
+                            </button>
+                          )}
+                          <button onClick={() => {
+                            setSectionForm({ ...sectionForm, images: sectionForm.images.filter((_, i) => i !== idx) });
+                          }} className="p-1 rounded bg-red-500/80 hover:bg-red-500 text-white text-xs" title="Eliminar">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                          {idx < sectionForm.images.length - 1 && (
+                            <button onClick={() => {
+                              const imgs = [...sectionForm.images];
+                              [imgs[idx], imgs[idx + 1]] = [imgs[idx + 1], imgs[idx]];
+                              setSectionForm({ ...sectionForm, images: imgs });
+                            }} className="p-1 rounded bg-white/20 hover:bg-white/40 text-white text-xs" title="Mover derecha">
+                              →
+                            </button>
+                          )}
+                        </div>
+                        <span className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded font-mono">{idx + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <CreativeSelector onSelect={(url) => {
+                  if (!sectionForm.images.includes(url)) {
+                    setSectionForm({ ...sectionForm, images: [...sectionForm.images, url] });
+                  }
+                }} />
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  Selecciona varios creativos para el carrusel. Arrastra para reordenar.
+                </p>
+              </div>
+            )}
+
             <button onClick={handleSaveSection} disabled={updateSection.isPending}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
               {updateSection.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : "Guardar cambios"}

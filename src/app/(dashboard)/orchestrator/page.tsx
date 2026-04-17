@@ -23,9 +23,8 @@ const AGENT_OPTIONS = [
   { id: "copywriting", label: "Copywriting", description: "Textos de venta, headlines, emails", credits: "17", color: "text-emerald-400" },
   { id: "image_gen", label: "Imágenes", description: "Generación de imágenes de producto", credits: "15", color: "text-rose-400" },
   { id: "landing_page", label: "Landing Page", description: "Páginas de venta de alta conversión", credits: "14", color: "text-blue-400" },
-  { id: "store_dev", label: "Tienda", description: "Configuración de tienda online", credits: "14", color: "text-indigo-400" },
   { id: "ads", label: "Anuncios", description: "Campañas Meta Ads, Google Ads, TikTok", credits: "4", color: "text-orange-400" },
-  { id: "product_search", label: "Productos", description: "Búsqueda y análisis de mercado", credits: "4", color: "text-emerald-400" },
+  { id: "product_search", label: "Productos", description: "Búsqueda y análisis de mercado", credits: "7", color: "text-emerald-400" },
   { id: "conversion_opt", label: "Conversión", description: "Análisis de métricas y CRO", credits: "4", color: "text-amber-400" },
   { id: "dropi_connector", label: "Dropi", description: "Búsqueda y sync con Dropi", credits: "2", color: "text-cyan-400" },
 ];
