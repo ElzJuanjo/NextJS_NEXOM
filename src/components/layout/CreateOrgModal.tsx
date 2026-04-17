@@ -35,19 +35,19 @@ export function CreateOrgModal({ open }: CreateOrgModalProps) {
   };
 
   return (
-    <Modal open={open} title="Crea tu organización" closable={false}>
+    <Modal open={open} title="Create your organization" closable={false}>
       <p className="text-sm text-muted-foreground mb-4">
-        Necesitas una organización para comenzar a usar NEXOM. Esta será tu workspace principal.
+        You need an organization to start using NEXOM. This will be your main workspace.
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="text-sm font-medium text-foreground block mb-1.5">
-            Nombre de la organización
+            Organization name
           </label>
           <input
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="Mi Tienda Online"
+            placeholder="My Online Store"
             className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
             required
             minLength={2}
@@ -58,13 +58,13 @@ export function CreateOrgModal({ open }: CreateOrgModalProps) {
           <input
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
-            placeholder="mi-tienda-online"
+            placeholder="my-online-store"
             pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
             className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all"
             required
             minLength={2}
           />
-          <p className="text-xs text-muted-foreground mt-1">Solo letras minúsculas, números y guiones</p>
+          <p className="text-xs text-muted-foreground mt-1">Only lowercase letters, numbers and hyphens</p>
         </div>
         <button
           type="submit"
@@ -76,7 +76,7 @@ export function CreateOrgModal({ open }: CreateOrgModalProps) {
           ) : (
             <>
               <Building2 className="w-4 h-4" />
-              Crear organización
+              Create organization
             </>
           )}
         </button>

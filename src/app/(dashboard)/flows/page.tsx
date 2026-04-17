@@ -261,48 +261,48 @@ export default function FlowsPage() {
       </div>
 
       {/* ══════ Execute Flow Modal ══════ */}
-      <Modal open={!!showExecute} onClose={() => !flowRunning && setShowExecute(null)} title="Execute Flow" className="max-w-lg">
+      <Modal open={!!showExecute} onClose={() => !flowRunning && setShowExecute(null)} title="Ejecutar Flujo" className="max-w-lg">
         {showExecute && (
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Provide context for the agents. The more detail you give, the better the results.
+              Proporcionar contexto a los agentes. Cuanto más detalles proporciones, mejores serán los resultados.
             </p>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-foreground block mb-1">Brand name</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Nombre de marca</label>
                 <input value={contextForm.brand} onChange={(e) => setContextForm({ ...contextForm, brand: e.target.value })}
-                  placeholder="e.g. NEXOM" disabled={flowRunning}
+                  placeholder="Ej: NEXOM" disabled={flowRunning}
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring transition-all disabled:opacity-50" />
               </div>
               <div>
-                <label className="text-xs font-medium text-foreground block mb-1">Product</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Producto</label>
                 <input value={contextForm.product} onChange={(e) => setContextForm({ ...contextForm, product: e.target.value })}
-                  placeholder="e.g. Wireless earbuds" disabled={flowRunning}
+                  placeholder="Ej: Auriculares inalámbricos" disabled={flowRunning}
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring transition-all disabled:opacity-50" />
               </div>
               <div>
-                <label className="text-xs font-medium text-foreground block mb-1">Niche</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Nicho</label>
                 <input value={contextForm.niche} onChange={(e) => setContextForm({ ...contextForm, niche: e.target.value })}
-                  placeholder="e.g. Tech accessories" disabled={flowRunning}
+                  placeholder="Ej: Accesorios tecnológicos" disabled={flowRunning}
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring transition-all disabled:opacity-50" />
               </div>
               <div>
-                <label className="text-xs font-medium text-foreground block mb-1">Market</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Mercado</label>
                 <input value={contextForm.market} onChange={(e) => setContextForm({ ...contextForm, market: e.target.value })}
-                  placeholder="e.g. Colombia, LATAM" disabled={flowRunning}
+                  placeholder="Ej: Colombia, LATAM" disabled={flowRunning}
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring transition-all disabled:opacity-50" />
               </div>
               <div>
-                <label className="text-xs font-medium text-foreground block mb-1">Target audience</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Público objetivo</label>
                 <input value={contextForm.audience} onChange={(e) => setContextForm({ ...contextForm, audience: e.target.value })}
-                  placeholder="e.g. Young professionals 25-35" disabled={flowRunning}
+                  placeholder="Ej: Jóvenes profesionales 25-35" disabled={flowRunning}
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring transition-all disabled:opacity-50" />
               </div>
               <div>
-                <label className="text-xs font-medium text-foreground block mb-1">Tone</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Tono</label>
                 <input value={contextForm.tone} onChange={(e) => setContextForm({ ...contextForm, tone: e.target.value })}
-                  placeholder="e.g. Premium, modern" disabled={flowRunning}
+                  placeholder="Ej: Premium, moderno" disabled={flowRunning}
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground outline-none focus:border-ring transition-all disabled:opacity-50" />
               </div>
             </div>
@@ -426,7 +426,7 @@ export default function FlowsPage() {
               {flowRunning ? (
                 <><Spinner className="w-4 h-4 text-primary-foreground" /> Running...</>
               ) : (
-                <><Play className="w-4 h-4" /> Execute Flow</>
+                <><Play className="w-4 h-4" /> Iniciar</>
               )}
             </button>
           </div>
@@ -598,18 +598,18 @@ export default function FlowsPage() {
       </Modal>
 
       {/* ══════ Create Flow Modal ══════ */}
-      <Modal open={showCreate} onClose={() => { setShowCreate(false); setCustomSteps([]); setForm({ name: "" }); }} title="New flow" className="max-w-lg">
+      <Modal open={showCreate} onClose={() => { setShowCreate(false); setCustomSteps([]); setForm({ name: "" }); }} title="Nuevo flujo" className="max-w-lg">
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Flow name</label>
+            <label className="text-sm font-medium text-foreground block mb-1.5">Nombre del flujo</label>
             <input value={form.name} onChange={(e) => setForm({ name: e.target.value })}
-              placeholder="e.g. Product launch campaign"
+              placeholder="Ej: Campaña de lanzamiento de producto"
               className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-all" />
           </div>
 
           {/* Steps builder */}
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">Steps ({customSteps.length})</label>
+            <label className="text-sm font-medium text-foreground block mb-1.5">Pasos ({customSteps.length})</label>
 
             {customSteps.length > 0 && (
               <div className="space-y-1.5 mb-3">
@@ -700,7 +700,7 @@ export default function FlowsPage() {
             disabled={createFlow.isPending || !form.name.trim() || customSteps.length === 0}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60"
           >
-            {createFlow.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : `Create flow (${customSteps.length} steps)`}
+            {createFlow.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : `Crear flujo (${customSteps.length} pasos)`}
           </button>
         </div>
       </Modal>
