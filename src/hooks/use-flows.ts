@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { flowService } from "@/services/flow.service";
 import { showProgressToast, dismissProgressToast } from "@/components/ui/ProgressToast";
@@ -84,6 +84,95 @@ export function useExecuteFlowStream() {
   const [isPending, setIsPending] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
+  // ── Simulación de progreso gradual ──────────────────────────────────
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearSimulation = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  /** Arranca la simulación gradual desde `fromPct` hasta `ceilPct`.
+   *  Se auto-limpia cuando alcanza el techo o cuando llega un nuevo evento. */
+  const startSimulation = (fromPct: number, ceilPct: number, currentEvent: {
+    stage: string; agent?: string; message?: string; detail?: string;
+  }) => {
+    clearSimulation();
+    let simPct = fromPct;
+    intervalRef.current = setInterval(() => {
+      simPct += 2;
+      if (simPct >= ceilPct) {
+        clearSimulation();
+        return;
+      }
+      setProgress((prev) => {
+        // Solo avanzamos si seguimos en la misma fase (step_started/running)
+        if (!prev || prev.stage === "step_completed" || prev.stage === "done") return prev;
+        return { ...prev, pct: simPct };
+      });
+      showProgressToast({
+        id: "flow-progress",
+        message: currentEvent.message || "Processing...",
+        pct: simPct,
+        detail: currentEvent.detail,
+      });
+    }, 1500);
+  };
+
+  /** Handler compartido de eventos SSE de progreso (execute + resume). */
+  const handleProgressEvent = (event: {
+    stage: string; pct: number; agent?: string; message?: string; detail?: string;
+  }) => {
+    // Cada evento real del backend cancela la simulación anterior
+    clearSimulation();
+    setProgress(event);
+
+    // Track individual step statuses
+    if (event.agent) {
+      setStepStatuses((prev) => ({
+        ...prev,
+        [event.agent!]: {
+          agent: event.agent!,
+          status: event.stage === "step_started" ? "running"
+            : event.stage === "step_completed" ? "completed"
+            : event.stage === "step_error" ? "error"
+            : event.stage === "awaiting_selection" ? "completed"
+            : prev[event.agent!]?.status === "completed" ? "completed"
+            : "running",
+          message: event.message || "",
+          detail: event.detail,
+        },
+      }));
+    }
+
+    showProgressToast({
+      id: "flow-progress",
+      message: event.message || "Processing...",
+      pct: event.pct,
+      detail: event.detail,
+    });
+
+    // Iniciar simulación gradual cuando un step arranca.
+    // Usamos un techo conservador (evento real - 3%) para no adelantarnos.
+    if (event.stage === "step_started") {
+      // Parseamos step info del detail ("Step 2/5") para calcular el techo
+      const stepMatch = event.detail?.match(/Step\s+(\d+)\s*\/\s*(\d+)/i);
+      let ceilPct: number;
+      if (stepMatch) {
+        const stepNum = parseInt(stepMatch[1], 10);   // 1-based actual
+        const totalSteps = parseInt(stepMatch[2], 10);
+        // Próximo evento será step_completed con pct = 5 + (stepNum/total)*90
+        ceilPct = Math.min(5 + (stepNum / totalSteps) * 90 - 3, 94);
+      } else {
+        // Fallback: avanzamos máximo 15% desde el actual
+        ceilPct = Math.min(event.pct + 15, 94);
+      }
+      startSimulation(event.pct, ceilPct, event);
+    }
+  };
+
   const execute = async (
     body: { flow_id: string; context?: Record<string, unknown>; reference_image_url?: string },
     onSuccess?: (data: Record<string, unknown>) => void,
@@ -96,34 +185,9 @@ export function useExecuteFlowStream() {
     try {
       await flowService.executeStream(
         body,
-        (event) => {
-          setProgress(event);
-
-          // Track individual step statuses
-          if (event.agent) {
-            setStepStatuses((prev) => ({
-              ...prev,
-              [event.agent!]: {
-                agent: event.agent!,
-                status: event.stage === "step_started" ? "running"
-                  : event.stage === "step_completed" ? "completed"
-                  : event.stage === "step_error" ? "error"
-                  : event.stage === "awaiting_selection" ? "completed"
-                  : "running",
-                message: event.message || "",
-                detail: event.detail,
-              },
-            }));
-          }
-
-          showProgressToast({
-            id: "flow-progress",
-            message: event.message || "Processing...",
-            pct: event.pct,
-            detail: event.detail,
-          });
-        },
+        handleProgressEvent,
         (data) => {
+          clearSimulation();
           dismissProgressToast("flow-progress");
           setProgress(null);
           setIsPending(false);
@@ -145,6 +209,7 @@ export function useExecuteFlowStream() {
           onSuccess?.(data);
         },
         (error) => {
+          clearSimulation();
           dismissProgressToast("flow-progress");
           setProgress(null);
           setIsPending(false);
@@ -152,6 +217,7 @@ export function useExecuteFlowStream() {
         },
       );
     } catch {
+      clearSimulation();
       dismissProgressToast("flow-progress");
       setProgress(null);
       setIsPending(false);
@@ -160,6 +226,7 @@ export function useExecuteFlowStream() {
   };
 
   const reset = () => {
+    clearSimulation();
     setProgress(null);
     setStepStatuses({});
     setIsPending(false);
@@ -185,31 +252,9 @@ export function useExecuteFlowStream() {
       await flowService.resumeWithSelectionStream(
         flowId,
         selected,
-        (event) => {
-          setProgress(event);
-          if (event.agent) {
-            setStepStatuses((prev) => ({
-              ...prev,
-              [event.agent!]: {
-                agent: event.agent!,
-                status: event.stage === "step_started" ? "running"
-                  : event.stage === "step_completed" ? "completed"
-                  : event.stage === "step_error" ? "error"
-                  : prev[event.agent!]?.status === "completed" ? "completed"
-                  : "running",
-                message: event.message || "",
-                detail: event.detail,
-              },
-            }));
-          }
-          showProgressToast({
-            id: "flow-progress",
-            message: event.message || "Processing...",
-            pct: event.pct,
-            detail: event.detail,
-          });
-        },
+        handleProgressEvent,
         (data) => {
+          clearSimulation();
           dismissProgressToast("flow-progress");
           setProgress(null);
           setIsPending(false);
@@ -225,6 +270,7 @@ export function useExecuteFlowStream() {
           onSuccess?.(data);
         },
         (error) => {
+          clearSimulation();
           dismissProgressToast("flow-progress");
           setProgress(null);
           setIsPending(false);
@@ -232,6 +278,7 @@ export function useExecuteFlowStream() {
         },
       );
     } catch {
+      clearSimulation();
       dismissProgressToast("flow-progress");
       setProgress(null);
       setIsPending(false);

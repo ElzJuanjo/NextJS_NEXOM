@@ -20,8 +20,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "NEXOM — Automatización E-commerce con IA",
-  description: "Plataforma de automatización y agentes de IA para e-commerce",
+  title: "NEXOM",
+  description: "Automation platform and AI agents for e-commerce",
   icons: { icon: "/favicon.ico" },
 };
 

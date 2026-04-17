@@ -5,7 +5,7 @@ import { creativeService } from "@/services/creative.service";
 import { creativeBatchService } from "@/services/creative-batch.service";
 import { showProgressToast, dismissProgressToast } from "@/components/ui/ProgressToast";
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export const creativeKeys = {
   list: (productId: string) => ["creatives", productId] as const,
@@ -96,6 +96,41 @@ export function useGenerateBatchStream() {
   const [isPending, setIsPending] = useState(false);
   const [promptPack, setPromptPack] = useState<Array<{ type: string; style: string; prompt: string }>>([]);
 
+  // ── Simulación de progreso gradual ──────────────────────────────────
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearSimulation = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const startSimulation = (fromPct: number, ceilPct: number, currentEvent: {
+    stage: string; message?: string; detail?: string;
+  }) => {
+    clearSimulation();
+    let simPct = fromPct;
+    intervalRef.current = setInterval(() => {
+      simPct += 2;
+      if (simPct >= ceilPct) {
+        clearSimulation();
+        return;
+      }
+      setProgress((prev) => {
+        // Solo avanzamos si seguimos en generating (no si ya pasó a image_ready/uploading/done)
+        if (!prev || prev.stage === "image_ready" || prev.stage === "uploading" || prev.stage === "done") return prev;
+        return { ...prev, pct: simPct };
+      });
+      showProgressToast({
+        id: "batch-progress",
+        message: currentEvent.message || "Generating...",
+        pct: simPct,
+        detail: currentEvent.detail,
+      });
+    }, 1500);
+  };
+
   const generate = async (
     body: {
       product_id?: string;
@@ -116,6 +151,8 @@ export function useGenerateBatchStream() {
       await creativeBatchService.generateStream(
         body,
         (event) => {
+          // Cada evento real del backend cancela la simulación
+          clearSimulation();
           setProgress(event);
           showProgressToast({
             id: "batch-progress",
@@ -123,8 +160,26 @@ export function useGenerateBatchStream() {
             pct: event.pct,
             detail: event.detail,
           });
+
+          // Iniciar simulación cuando arranca la generación de una imagen.
+          // Parseamos "Generating image N/T" del message para calcular el techo.
+          if (event.stage === "generating") {
+            const imgMatch = event.message?.match(/image\s+(\d+)\s*\/\s*(\d+)/i);
+            let ceilPct: number;
+            if (imgMatch) {
+              const imgNum = parseInt(imgMatch[1], 10);     // 1-based
+              const totalImgs = parseInt(imgMatch[2], 10);
+              // Próximo evento (image_ready) tendrá pct = 10 + (imgNum/total)*80
+              ceilPct = Math.min(10 + (imgNum / totalImgs) * 80 - 3, 89);
+            } else {
+              // Fallback: avanzamos máximo 12% desde el actual
+              ceilPct = Math.min(event.pct + 12, 89);
+            }
+            startSimulation(event.pct, ceilPct, event);
+          }
         },
         (data) => {
+          clearSimulation();
           setProgress(null);
           setIsPending(false);
           // Extract prompt pack from done payload
@@ -140,6 +195,7 @@ export function useGenerateBatchStream() {
           onSuccess?.();
         },
         (error) => {
+          clearSimulation();
           setProgress(null);
           setIsPending(false);
           dismissProgressToast("batch-progress");
@@ -147,6 +203,7 @@ export function useGenerateBatchStream() {
         },
       );
     } catch {
+      clearSimulation();
       setProgress(null);
       setIsPending(false);
       toast.error("Connection error");
