@@ -418,6 +418,20 @@ export default function SettingsPage() {
             {activeTab === "billing" && (
               <div className="space-y-6 animate-fade-in">
                 <CreditUsage />
+                <div className="bg-card border border-border rounded-xl p-10 flex flex-col items-center justify-center text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center mb-4">
+                    <CreditCard className="w-7 h-7 text-violet-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Planes y precios</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Estamos preparando opciones de planes increíbles para ti. Muy pronto podrás elegir el que mejor se adapte a tus necesidades.
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/10 text-violet-400 text-xs font-medium border border-violet-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                    Próximamente
+                  </span>
+                </div>
+                {/* ── Plans grid (hidden for closed beta) ──
                 <div className="bg-card border border-border rounded-xl p-6">
                   <h3 className="text-base font-semibold text-foreground mb-4">Planes disponibles</h3>
                   {plansLoading ? (
@@ -462,6 +476,7 @@ export default function SettingsPage() {
                     </div>
                   )}
                 </div>
+                ── end hidden plans ── */}
               </div>
             )}
 

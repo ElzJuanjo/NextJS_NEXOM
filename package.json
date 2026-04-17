@@ -24,6 +24,7 @@
     "react-hot-toast": "^2.4.1",
     "react-markdown": "^9.0.0",
     "remark-gfm": "^4.0.1",
+    "sweetalert2": "^11.26.24",
     "tailwind-merge": "^2.3.0",
     "zod": "^3.23.0"
   },

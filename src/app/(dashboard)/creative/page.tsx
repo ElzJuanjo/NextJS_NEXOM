@@ -17,6 +17,7 @@ import {
   useAssignProduct, useCreateGallery, useUpdateGallery, useMoveCreative,
 } from "@/hooks/use-creatives";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { confirmDelete } from "@/lib/swal";
 import type { CreativeResponse, CreativeBatchResponse } from "@/types";
 import { PlatformPreview } from "@/components/ui/PlatformPreview";
 import { useMyOrg } from "@/hooks/use-org";
@@ -165,7 +166,7 @@ export default function CreativePage() {
                         className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm(`¿Eliminar "${batch.name}" y todas sus imágenes?`)) deleteBatch.mutate(batch.id); }}
+                      <button onClick={async (e) => { e.stopPropagation(); if (await confirmDelete(`¿Eliminar "${batch.name}" y todas sus imágenes?`)) deleteBatch.mutate(batch.id); }}
                         className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -739,7 +740,7 @@ function CreativeCard({
             title="Asignar producto">
             <Link2 className="w-3 h-3" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar?")) onDelete(); }}
+          <button onClick={async (e) => { e.stopPropagation(); if (await confirmDelete("¿Eliminar?")) onDelete(); }}
             className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             title="Eliminar">
             <Trash2 className="w-3 h-3" />

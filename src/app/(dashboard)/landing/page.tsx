@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { useBrands, useUpdateBrand } from "@/hooks/use-brands";
+import { confirmDelete } from "@/lib/swal";
 import { useCreatives } from "@/hooks/use-creatives";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -383,7 +384,7 @@ export default function LandingPage() {
                           </button>
                         </div>
                       </div>
-                      <button onClick={() => { if (confirm("¿Eliminar esta landing page?")) deleteLanding.mutate(lp.id); }}
+                      <button onClick={async () => { if (await confirmDelete("¿Eliminar esta landing page?")) deleteLanding.mutate(lp.id); }}
                         className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors" title="Delete">
                         <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                       </button>
@@ -529,7 +530,7 @@ export default function LandingPage() {
                                   className="p-1 text-muted-foreground hover:text-blue-400">
                                   <Edit3 className="w-3 h-3" />
                                 </button>
-                                <button onClick={() => { if (confirm("¿Eliminar sección?")) deleteSection.mutate(section.id); }}
+                                <button onClick={async () => { if (await confirmDelete("¿Eliminar sección?")) deleteSection.mutate(section.id); }}
                                   className="p-1 text-muted-foreground hover:text-destructive">
                                   <Trash2 className="w-3 h-3" />
                                 </button>

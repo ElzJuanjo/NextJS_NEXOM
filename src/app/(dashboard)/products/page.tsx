@@ -14,6 +14,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useImportFromDropi } from "@/hooks/use-products";
 import { useBrands } from "@/hooks/use-brands";
 import { cn, formatCurrency } from "@/lib/utils";
+import { confirmDelete } from "@/lib/swal";
 import type { ProductResponse } from "@/types";
 import { useCreatives } from "@/hooks/use-creatives";
 
@@ -812,7 +813,7 @@ export default function ProductsPage() {
                           <Edit3 className="w-3 h-3 text-muted-foreground" />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar?")) deleteProduct.mutate(product.id); }}
+                          onClick={async (e) => { e.stopPropagation(); if (await confirmDelete("¿Eliminar?")) deleteProduct.mutate(product.id); }}
                           className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
                         >
                           <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />

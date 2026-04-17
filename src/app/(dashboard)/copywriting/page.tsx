@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
+import { confirmDelete } from "@/lib/swal";
 import { useBrands } from "@/hooks/use-brands";
 import { useProducts } from "@/hooks/use-products";
 import {
@@ -159,8 +160,8 @@ export default function CopywritingPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("¿Eliminar este copy asset permanentemente?")) {
+  const handleDelete = async (id: string) => {
+    if (await confirmDelete("¿Eliminar este copy asset permanentemente?")) {
       deleteAsset.mutate(id);
       if (expandedId === id) setExpandedId(null);
     }

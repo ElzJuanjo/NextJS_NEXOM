@@ -13,6 +13,7 @@ import {
   useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand,
   useBrandTemplates, useCreateBrandFromTemplate,
 } from "@/hooks/use-brands";
+import { confirmDelete } from "@/lib/swal";
 import type { BrandResponse } from "@/types";
 import type { BrandTemplate } from "@/services/brand.service";
 
@@ -215,7 +216,7 @@ export default function BrandingPage() {
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <Edit3 className="w-3 h-3" /> Editar
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar marca?")) deleteBrand.mutate(brand.id); }}
+                    <button onClick={async (e) => { e.stopPropagation(); if (await confirmDelete("¿Eliminar marca?")) deleteBrand.mutate(brand.id); }}
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
                       <Trash2 className="w-3 h-3" /> Eliminar
                     </button>

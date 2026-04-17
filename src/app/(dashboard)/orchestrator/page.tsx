@@ -11,6 +11,7 @@ import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { ProductSelectionCard } from "@/components/ui/ProductSelectionCard";
 import { useConversations, useConversation, useSendMessageStream, useDeleteConversation, useUpdateConversation, useUploadChatImage } from "@/hooks/use-conversations";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { confirmDelete } from "@/lib/swal";
 import { AGENT_META, type ConversationMessageResponse, type CandidateProduct } from "@/types";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -465,7 +466,7 @@ export default function OrchestratorPage() {
                           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             <button onClick={(e) => { e.stopPropagation(); setEditingTitle(convo.id); setEditTitleValue(convo.title ?? ""); }}
                               className="p-1 rounded hover:bg-accent"><Edit3 className="w-3 h-3" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); if (confirm("¿Eliminar conversación?")) { deleteConvo.mutate(convo.id); if (activeConvoId === convo.id) handleNewChat(); } }}
+                            <button onClick={async (e) => { e.stopPropagation(); if (await confirmDelete("¿Eliminar conversación?")) { deleteConvo.mutate(convo.id); if (activeConvoId === convo.id) handleNewChat(); } }}
                               className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         )}

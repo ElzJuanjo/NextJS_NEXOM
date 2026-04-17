@@ -17,6 +17,7 @@ import {
 } from "@/hooks/use-flows";
 import { useUploadEphemeralImage } from "@/hooks/use-conversations";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { confirmDelete } from "@/lib/swal";
 import { AGENT_META, type CandidateProduct } from "@/types";
 import toast from "react-hot-toast";
 
@@ -192,7 +193,7 @@ export default function FlowsPage() {
                         <Play className="w-3.5 h-3.5 text-emerald-400" />
                       </button>
                     )}
-                    <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete this flow?")) deleteFlow.mutate(flow.id); }}
+                    <button onClick={async (e) => { e.stopPropagation(); if (await confirmDelete("¿Eliminar este flow?")) deleteFlow.mutate(flow.id); }}
                       className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors" title="Delete">
                       <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                     </button>
