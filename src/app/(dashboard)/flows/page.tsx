@@ -677,7 +677,7 @@ export default function FlowsPage() {
 
           <button
             onClick={() => {
-              if (!form.name.trim() || customSteps.length === 0) return;
+              if (!form.name.trim() || customSteps.length < 2) return;
               createFlow.mutate(
                 {
                   name: form.name.trim(),
@@ -697,10 +697,10 @@ export default function FlowsPage() {
                 }
               );
             }}
-            disabled={createFlow.isPending || !form.name.trim() || customSteps.length === 0}
+            disabled={createFlow.isPending || !form.name.trim() || customSteps.length < 2}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60"
           >
-            {createFlow.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : `Crear flujo (${customSteps.length} pasos)`}
+            {createFlow.isPending ? <Spinner className="w-4 h-4 text-primary-foreground" /> : customSteps.length < 2 ? `Agrega al menos 2 pasos (${customSteps.length}/2)` : `Crear flujo (${customSteps.length} pasos)`}
           </button>
         </div>
       </Modal>
