@@ -299,6 +299,7 @@ export interface LandingSectionResponse {
   content: Record<string, unknown> | null;
   image_url: string | null;
   images: string[] | null;
+  ab_group: string | null;
   created_at: string;
 }
 
@@ -312,6 +313,12 @@ export interface LandingPageResponse {
   published_url: string | null;
   published_at: string | null;
   template: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  og_image: string | null;
+  analytics_config: Record<string, string> | null;
+  custom_css: string | null;
+  use_custom_css: boolean;
   sections: LandingSectionResponse[];
   created_at: string;
 }

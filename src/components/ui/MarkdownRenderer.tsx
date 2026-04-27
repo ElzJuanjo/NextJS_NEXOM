@@ -233,22 +233,23 @@ function parseLangFromClassName(className?: string): string {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
-// ─── Internal JSON block stripper ───────────────────────────────────
-// Los agentes emiten bloques <!--XXX_JSON ...--> al final de sus respuestas
-// para auto-persistencia interna. El backend ya los sanitiza, pero este
-// renderer aplica una segunda capa defensiva por dos razones:
-//   1. Mensajes viejos en BD que se guardaron antes del fix del sanitizer.
-//   2. remark-gfm convierte "-->" en "⟶" y rompe el comentario para el
-//      navegador, dejando el JSON visible como texto plano.
-// Cubre tanto bloques bien cerrados como bloques abiertos sin cierre.
+// ─── Internal block stripper ─────────────────────────────────────────
+// Los agentes emiten bloques <!--XXX_JSON --> y <!--LANDING_CSS --> al final
+// de sus respuestas para auto-persistencia interna. Este renderer los elimina
+// antes de mostrar al usuario (doble capa defensiva frente a mensajes viejos
+// en BD y a remark-gfm que convierte "-->" en "⟶" dejando el bloque visible).
 const INTERNAL_JSON_BLOCK = /\s*<!--\s*(?:BRAND_JSON|COPY_JSON|LANDING_JSON|PRODUCT_JSON|SELECTABLE_PRODUCTS_JSON)\s*[\[{][\s\S]*?[\]}]\s*-->\s*/g;
 const INTERNAL_JSON_OPEN_NO_CLOSE = /\s*<!--\s*(?:BRAND_JSON|COPY_JSON|LANDING_JSON|PRODUCT_JSON|SELECTABLE_PRODUCTS_JSON)\b[\s\S]*$/;
+const INTERNAL_CSS_BLOCK = /\s*<!--\s*LANDING_CSS\s*\n[\s\S]*?\n\s*-->\s*/g;
+const INTERNAL_CSS_OPEN_NO_CLOSE = /\s*<!--\s*LANDING_CSS\b[\s\S]*$/;
 
 function stripInternalJson(content: string): string {
     if (!content || !content.includes("<!--")) return content;
     return content
         .replace(INTERNAL_JSON_BLOCK, "")
         .replace(INTERNAL_JSON_OPEN_NO_CLOSE, "")
+        .replace(INTERNAL_CSS_BLOCK, "")
+        .replace(INTERNAL_CSS_OPEN_NO_CLOSE, "")
         .trimEnd();
 }
 

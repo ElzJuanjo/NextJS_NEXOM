@@ -38,6 +38,12 @@ export const landingService = {
     brand_id: string | null;
     published_url: string;
     template: string;
+    seo_title: string;
+    seo_description: string;
+    og_image: string;
+    analytics_config: Record<string, string | undefined>;
+    custom_css?: string | null;
+    use_custom_css?: boolean;
   }>) {
     const { data } = await apiClient.patch<LandingPageResponse>(`${BASE}/${lpId}`, body);
     return data;
@@ -68,13 +74,46 @@ export const landingService = {
     cta_url: string;
     is_visible: boolean;
     content: Record<string, unknown>;
+    image_url: string;
+    images: string[];
+    ab_group: string;
   }>) {
     const { data } = await apiClient.patch<LandingSectionResponse>(`${BASE}/sections/${sectionId}`, body);
     return data;
   },
 
+  async livePreviewSection(lpId: string, sectionId: string, body: {
+    section_type: string;
+    title?: string;
+    body?: string;
+    cta_text?: string;
+    cta_url?: string;
+    content?: Record<string, unknown>;
+    image_url?: string;
+  }): Promise<string> {
+    const token = getAccessToken();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${BASE}/${lpId}/sections/${sectionId}/preview`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) throw new Error(`Preview failed: ${res.status}`);
+    return res.text();
+  },
+
   async deleteSection(sectionId: string) {
     await apiClient.delete(`${BASE}/sections/${sectionId}`);
+  },
+
+  async duplicateSection(sectionId: string) {
+    const { data } = await apiClient.post<LandingSectionResponse>(`${BASE}/sections/${sectionId}/duplicate`);
+    return data;
   },
 
   async reorderSections(lpId: string, sectionIds: string[]) {
@@ -94,6 +133,36 @@ export const landingService = {
     );
     if (!res.ok) throw new Error(`Render failed: ${res.status}`);
     return res.text();
+  },
+
+  async renderSection(lpId: string, sectionId: string): Promise<string> {
+    const token = getAccessToken();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${BASE}/${lpId}/sections/${sectionId}/render`,
+      { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
+    );
+    if (!res.ok) throw new Error(`Render failed: ${res.status}`);
+    return res.text();
+  },
+
+  async duplicate(lpId: string): Promise<LandingPageResponse> {
+    const { data } = await apiClient.post<LandingPageResponse>(`${BASE}/${lpId}/duplicate`);
+    return data;
+  },
+
+  async regenerateSection(sectionId: string): Promise<LandingSectionResponse> {
+    const { data } = await apiClient.post<LandingSectionResponse>(`${BASE}/sections/${sectionId}/regenerate`);
+    return data;
+  },
+
+  async exportHTML(lpId: string): Promise<Blob> {
+    const token = getAccessToken();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${BASE}/${lpId}/export/html`,
+      { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
+    );
+    if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+    return res.blob();
   },
 
   async exportShopify(lpId: string): Promise<string> {

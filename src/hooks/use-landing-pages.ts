@@ -92,6 +92,42 @@ export function useDeleteSection() {
   });
 }
 
+export function useDuplicateLanding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lpId: string) => landingService.duplicate(lpId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: landingKeys.all });
+      toast.success("Landing duplicada");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useRegenerateSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sectionId: string) => landingService.regenerateSection(sectionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: landingKeys.all });
+      toast.success("Sección regenerada con IA ✨");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDuplicateSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sectionId: string) => landingService.duplicateSection(sectionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: landingKeys.all });
+      toast.success("Sección duplicada");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 export function useReorderSections() {
   const qc = useQueryClient();
   return useMutation({
@@ -115,6 +151,29 @@ export function useRenderHTML() {
       setHtml(result);
     } catch {
       toast.error("Error rendering landing page");
+      setHtml(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clear = () => setHtml(null);
+
+  return { html, loading, render, clear };
+}
+
+export function useSectionPreview() {
+  const [html, setHtml] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const render = async (lpId: string, sectionId: string) => {
+    setLoading(true);
+    setHtml(null);
+    try {
+      const result = await landingService.renderSection(lpId, sectionId);
+      setHtml(result);
+    } catch {
+      toast.error("Error cargando preview");
       setHtml(null);
     } finally {
       setLoading(false);
